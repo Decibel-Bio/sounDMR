@@ -87,7 +87,7 @@ process_subdir <- function(subdir) {
                              analysis_type = analysis_type)
   
   rm(dmrobj,methyl_summary)
-  write.csv(methyl_summary,paste(file_pre,"methyl_sum_DMR.csv", sep="_"), row.names = F)
+  write.csv(methyl_summary_DMR, paste(file_pre,"methyl_sum_DMR.csv", sep="_"), row.names = F)
 }
 lapply(subdirs, process_subdir)
 
