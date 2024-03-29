@@ -3,8 +3,8 @@
 suppressMessages(library(GetoptLong))
 suppressMessages(suppressWarnings(library(sounDMR)))
 
-control_value = 'Control' 
-treated_value = 'Treated'
+control_value = 'C' 
+treated_value = 'T'
 additional_sum_col = 'Group'
 stat = 'sd'
 reads_thresh = 3
