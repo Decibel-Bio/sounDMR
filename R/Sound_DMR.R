@@ -1,4 +1,4 @@
-# Copyright 2023 Sound Agriculture Company
+#Copyright 2023 Sound Agriculture Company
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -171,12 +171,11 @@ create_dmr_obj <- function(ZoomFrame = dataframe,
   
   # Aggregate
   print('Step 7: aggregating by plant')
-
+  
   LongPercent$total_RD<-LongMeth$total_RD
   
   LongPercent <- LongPercent %>%
-    group_by(Gene, Zeroth_pos, Plant, Position, CX, Strand, Group, Chromosome) %>%
-    summarize(Percent = weighted.mean(Percent, total_RD, na.rm = T))
+    mutate(Percent = weighted.mean(Percent, total_RD, na.rm = T), .by=c(Plant,Group, Chromosome, Position, Zeroth_pos))
   
   LongMeth <- LongMeth %>%
     group_by(Gene, Zeroth_pos, Plant, Position, CX, Strand, Group, Chromosome) %>%
@@ -599,7 +598,7 @@ run_model <- function(data, i, input_frame, formula, model_type,
       # Save the model output
       ith_model_summary <- as.data.frame(summary(beta_binomial)$coefficients$cond)
       input_frame <- save_model_summary(i, input_frame, ith_model_summary,
-                                   individual_name_z)
+                                        individual_name_z)
     }, error=function(e){
       #print(paste(i, "No Converge"))
       paste(i, 'No Converge')
@@ -728,7 +727,7 @@ individual_DMR <- function(methyl_sum, ZoomFrame_filtered, experimental_design_d
         if(sum(as.numeric(LMEX$UnMeth), na.rm=TRUE) > reads_threshold & sum(as.numeric(LMEX$Meth), na.rm=TRUE) > reads_threshold){
           # Run the model
           methyl_sum = run_model(LMEX, i, methyl_sum, formula, model,
-                                    individual_name_z = individual_name_z)
+                                 individual_name_z = individual_name_z)
         }
       }
     }
@@ -947,7 +946,7 @@ plot_changepoints_volcano <- function(data, changepoint_obj, gene_name,
       labs(x = "log(1 + Changepoint Length)", y = paste("Average", z_col),
            color = paste0("abs(", z_col, ")"),
            title = paste("Changepoints for", cyt_context, gene_name, "; penalty",
-                       penalty_val)) +
+                         penalty_val)) +
       scale_color_gradient(low = 'grey', high = 'red')
     
     print(plot)
@@ -1241,7 +1240,7 @@ sound_score <- function(changepoint_OF = dataframe, Statistic="Z_GroupT_small",
 #' @export
 
 split_by_chromosome <- function(input_file) {
-
+  
   output_filelist <- c()
   # get dir only
   fields <- strsplit(input_file, "/")[[1]]
@@ -1276,7 +1275,7 @@ split_by_chromosome <- function(input_file) {
     writeLines(line, output_files[[chromosome]])
   }
   # Close all output file connections
- i <- 1
+  i <- 1
   for (chr in names(output_files)) {
     close(output_files[[chr]])
     cat(paste("Chromosome", chr, "data has been written to", output_filelist[[i]], "\n"))
@@ -1657,7 +1656,7 @@ generate_methylframe <-function(methyl_bed_list=All_methyl_beds, Sample_count = 
   message('\nNOTE: Filtering NAs default is set to ',filter_NAs ,' (Total_samples/2). See documentation for ideas on how to use the filter \n')
   
   Megaframe <- Megaframe[Megaframe$NAs<=(filter_NAs*3),]
-
+  
   write.table(Megaframe, paste(File_prefix, "MegaFrame.csv",sep="_"), row.names=F, sep=",")
   
   message("Megaframe is now available in current directory and in the R-env!")
