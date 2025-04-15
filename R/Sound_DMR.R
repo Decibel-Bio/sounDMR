@@ -1345,7 +1345,7 @@ get_standard_methyl_bed <-function(Methyl_bed="Methyl.bed", Sample_ID = "S1", Me
   # Extract columns of interest based on which process was run
   #Columns of Interest include Chromosome|Position|Strand|Total_reads|Percent_Methylation|Cytosine_context
   
-  if (Methyl_call_type %in% c('DSP', 'Bonito', 'Dorado')){
+  if (Methyl_call_type %in% c('DSP', 'Bonito', 'Dorado', 'Modkit')){
     
     Methyl_bed <- Methyl_bed[,c(1,2,3,4,5,6)]
   }
@@ -1401,7 +1401,7 @@ generate_megaframe <- function(methyl_bed_list=All_methyl_beds, Sample_count, Me
   }
   
   
-  if (!(Methyl_call_type %in% c('DSP', 'Megalodon', 'Bonito', 'Dorado'))){
+  if (!(Methyl_call_type %in% c('DSP', 'Megalodon', 'Bonito', 'Dorado', "Modkit"))){
     stop("Methylation call not recognized, use 'DSP' or 'Megalodon' or 'Bonito' or 'Dorado', exiting!")
     
   }
@@ -1420,12 +1420,25 @@ generate_megaframe <- function(methyl_bed_list=All_methyl_beds, Sample_count, Me
   mylist <- c()
   experimental_design_df <- data.frame()
   for (i in 1:length(methyl_bed_list)){ #Iterate through methyl beds one by one
+    
+    if(Methyl_call_type == "Modkit"){
+      tmpsampleData <- read.csv(methyl_bed_list[i], sep="\t", header=TRUE, nrows = 5)  
+      classes <- sapply(tmpsampleData, class)
+      classes[c(3, 5, 7, 8, 9,12,13,14,15,16,17,18)] <- "NULL"
+      #import the bed file
+      import_bedfile <- data.frame(purrr::map(methyl_bed_list[i], ~fread(.x, sep="\t", header=TRUE, colClasses = classes)))
+      gsub("m,*", "", import_bedfile$name)->import_bedfile$name
+      gsub("*,0", "", import_bedfile$name)->import_bedfile$name
+      import_bedfile[,c(1,2,4,5,6,3)]->import_bedfile
+    }else{
     tmpsampleData <- read.csv(methyl_bed_list[i], sep="\t", header=FALSE, nrows = 5)
     classes <- sapply(tmpsampleData, class)
     #replace some columns to null to delete them
     classes[c(3, 4, 5, 7, 8, 9)] <- "NULL"
     #import the bed file
     import_bedfile <- data.frame(purrr::map(methyl_bed_list[i], ~fread(.x, sep="\t", header=FALSE, colClasses = classes)))
+    }
+    
     #call get_standard_methyl_bed function to clean up the bed file from each sample
     methyl_data <- get_standard_methyl_bed(Methyl_bed = import_bedfile, Sample_ID = sample_number[i], Methyl_call_type = Methyl_call_type, max_read_depth = max_read_depth )
     #getting the count of nrow for sanity checks
