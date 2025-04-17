@@ -1372,7 +1372,7 @@ get_standard_methyl_bed <-function(Methyl_bed="Methyl.bed", Sample_ID = "S1", Me
 #' @param methyl_bed_list (list) - ONT methyl bed filenames for each individual contained within the directory. This will just be a list of bedfile names.
 #' Hint : The input will be the "methyl_bed_list" vector that you create in the previous step.
 #' @param Sample_count (int) - This is required to assign proper alphabet codes. If you need to include the samples from a previous round, then enter the total number of samples from the previous round here. Default is 0. By default alphabetizing starts with 'A'.
-#' @param Methyl_call_type (str) - A string that includes information about the type of run. Currently this package works on Megalodon , DSP (DeepSignal Plant) and Bonito.
+#' @param Methyl_call_type (str) - A string that includes information about the type of run. Currently this package works on Dorado, Modkit , Megalodon , DSP (DeepSignal Plant) and Bonito.
 #' @param File_prefix (Flexible str) - This is to add a prefix to all the files that get exported and saved to the working directory while running the function.
 #' @return Megaframe(df) - Clean data frame containing combined methyl bed information for every individual in the experiment.
 #' @import tidyverse
