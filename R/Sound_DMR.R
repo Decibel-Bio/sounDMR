@@ -1,4 +1,4 @@
-# Copyright 2023 Sound Agriculture Company
+#Copyright 2023 Sound Agriculture Company
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -171,12 +171,11 @@ create_dmr_obj <- function(ZoomFrame = dataframe,
   
   # Aggregate
   print('Step 7: aggregating by plant')
-
+  
   LongPercent$total_RD<-LongMeth$total_RD
   
   LongPercent <- LongPercent %>%
-    group_by(Gene, Zeroth_pos, Plant, Position, CX, Strand, Group, Chromosome) %>%
-    summarize(Percent = weighted.mean(Percent, total_RD, na.rm = T))
+    mutate(Percent = weighted.mean(Percent, total_RD, na.rm = T), .by=c(Plant,Group, Chromosome, Position, Zeroth_pos))
   
   LongMeth <- LongMeth %>%
     group_by(Gene, Zeroth_pos, Plant, Position, CX, Strand, Group, Chromosome) %>%
@@ -599,7 +598,7 @@ run_model <- function(data, i, input_frame, formula, model_type,
       # Save the model output
       ith_model_summary <- as.data.frame(summary(beta_binomial)$coefficients$cond)
       input_frame <- save_model_summary(i, input_frame, ith_model_summary,
-                                   individual_name_z)
+                                        individual_name_z)
     }, error=function(e){
       #print(paste(i, "No Converge"))
       paste(i, 'No Converge')
@@ -728,7 +727,7 @@ individual_DMR <- function(methyl_sum, ZoomFrame_filtered, experimental_design_d
         if(sum(as.numeric(LMEX$UnMeth), na.rm=TRUE) > reads_threshold & sum(as.numeric(LMEX$Meth), na.rm=TRUE) > reads_threshold){
           # Run the model
           methyl_sum = run_model(LMEX, i, methyl_sum, formula, model,
-                                    individual_name_z = individual_name_z)
+                                 individual_name_z = individual_name_z)
         }
       }
     }
@@ -947,7 +946,7 @@ plot_changepoints_volcano <- function(data, changepoint_obj, gene_name,
       labs(x = "log(1 + Changepoint Length)", y = paste("Average", z_col),
            color = paste0("abs(", z_col, ")"),
            title = paste("Changepoints for", cyt_context, gene_name, "; penalty",
-                       penalty_val)) +
+                         penalty_val)) +
       scale_color_gradient(low = 'grey', high = 'red')
     
     print(plot)
@@ -1241,7 +1240,7 @@ sound_score <- function(changepoint_OF = dataframe, Statistic="Z_GroupT_small",
 #' @export
 
 split_by_chromosome <- function(input_file) {
-
+  
   output_filelist <- c()
   # get dir only
   fields <- strsplit(input_file, "/")[[1]]
@@ -1276,7 +1275,7 @@ split_by_chromosome <- function(input_file) {
     writeLines(line, output_files[[chromosome]])
   }
   # Close all output file connections
- i <- 1
+  i <- 1
   for (chr in names(output_files)) {
     close(output_files[[chr]])
     cat(paste("Chromosome", chr, "data has been written to", output_filelist[[i]], "\n"))
@@ -1346,7 +1345,7 @@ get_standard_methyl_bed <-function(Methyl_bed="Methyl.bed", Sample_ID = "S1", Me
   # Extract columns of interest based on which process was run
   #Columns of Interest include Chromosome|Position|Strand|Total_reads|Percent_Methylation|Cytosine_context
   
-  if (Methyl_call_type %in% c('DSP', 'Bonito', 'Dorado')){
+  if (Methyl_call_type %in% c('DSP', 'Bonito', 'Dorado', 'Modkit')){
     
     Methyl_bed <- Methyl_bed[,c(1,2,3,4,5,6)]
   }
@@ -1373,7 +1372,7 @@ get_standard_methyl_bed <-function(Methyl_bed="Methyl.bed", Sample_ID = "S1", Me
 #' @param methyl_bed_list (list) - ONT methyl bed filenames for each individual contained within the directory. This will just be a list of bedfile names.
 #' Hint : The input will be the "methyl_bed_list" vector that you create in the previous step.
 #' @param Sample_count (int) - This is required to assign proper alphabet codes. If you need to include the samples from a previous round, then enter the total number of samples from the previous round here. Default is 0. By default alphabetizing starts with 'A'.
-#' @param Methyl_call_type (str) - A string that includes information about the type of run. Currently this package works on Megalodon , DSP (DeepSignal Plant) and Bonito.
+#' @param Methyl_call_type (str) - A string that includes information about the type of run. Currently this package works on Dorado, Modkit , Megalodon , DSP (DeepSignal Plant) and Bonito.
 #' @param File_prefix (Flexible str) - This is to add a prefix to all the files that get exported and saved to the working directory while running the function.
 #' @return Megaframe(df) - Clean data frame containing combined methyl bed information for every individual in the experiment.
 #' @import tidyverse
@@ -1402,7 +1401,7 @@ generate_megaframe <- function(methyl_bed_list=All_methyl_beds, Sample_count, Me
   }
   
   
-  if (!(Methyl_call_type %in% c('DSP', 'Megalodon', 'Bonito', 'Dorado'))){
+  if (!(Methyl_call_type %in% c('DSP', 'Megalodon', 'Bonito', 'Dorado', "Modkit"))){
     stop("Methylation call not recognized, use 'DSP' or 'Megalodon' or 'Bonito' or 'Dorado', exiting!")
     
   }
@@ -1421,12 +1420,25 @@ generate_megaframe <- function(methyl_bed_list=All_methyl_beds, Sample_count, Me
   mylist <- c()
   experimental_design_df <- data.frame()
   for (i in 1:length(methyl_bed_list)){ #Iterate through methyl beds one by one
+    
+    if(Methyl_call_type == "Modkit"){
+      tmpsampleData <- read.csv(methyl_bed_list[i], sep="\t", header=TRUE, nrows = 5)  
+      classes <- sapply(tmpsampleData, class)
+      classes[c(3, 5, 7, 8, 9,12,13,14,15,16,17,18)] <- "NULL"
+      #import the bed file
+      import_bedfile <- data.frame(purrr::map(methyl_bed_list[i], ~fread(.x, sep="\t", header=TRUE, colClasses = classes)))
+      import_bedfile$name<-gsub("m,*", "", import_bedfile$name)
+      import_bedfile$name<-gsub("*,0", "", import_bedfile$name)
+      import_bedfile$name<-import_bedfile[,c(1,2,4,5,6,3)]
+    }else{
     tmpsampleData <- read.csv(methyl_bed_list[i], sep="\t", header=FALSE, nrows = 5)
     classes <- sapply(tmpsampleData, class)
     #replace some columns to null to delete them
     classes[c(3, 4, 5, 7, 8, 9)] <- "NULL"
     #import the bed file
     import_bedfile <- data.frame(purrr::map(methyl_bed_list[i], ~fread(.x, sep="\t", header=FALSE, colClasses = classes)))
+    }
+    
     #call get_standard_methyl_bed function to clean up the bed file from each sample
     methyl_data <- get_standard_methyl_bed(Methyl_bed = import_bedfile, Sample_ID = sample_number[i], Methyl_call_type = Methyl_call_type, max_read_depth = max_read_depth )
     #getting the count of nrow for sanity checks
@@ -1657,7 +1669,7 @@ generate_methylframe <-function(methyl_bed_list=All_methyl_beds, Sample_count = 
   message('\nNOTE: Filtering NAs default is set to ',filter_NAs ,' (Total_samples/2). See documentation for ideas on how to use the filter \n')
   
   Megaframe <- Megaframe[Megaframe$NAs<=(filter_NAs*3),]
-
+  
   write.table(Megaframe, paste(File_prefix, "MegaFrame.csv",sep="_"), row.names=F, sep=",")
   
   message("Megaframe is now available in current directory and in the R-env!")
