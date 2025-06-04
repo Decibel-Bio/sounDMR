@@ -1387,7 +1387,7 @@ get_standard_methyl_bed <-function(Methyl_bed="Methyl.bed", Sample_ID = "S1", Me
 
 
 
-generate_megaframe <- function(methyl_bed_list=All_methyl_beds, Sample_count, Methyl_call_type="Dorado", File_prefix="", max_read_depth=100){
+generate_megaframe <- function(methyl_bed_list=All_methyl_beds, Sample_count, Methyl_call_type="Dorado", File_prefix="", max_read_depth=100, bed_header=FALSE){
   
   #QC
   QC <- missing(methyl_bed_list)
@@ -1422,21 +1422,21 @@ generate_megaframe <- function(methyl_bed_list=All_methyl_beds, Sample_count, Me
   for (i in 1:length(methyl_bed_list)){ #Iterate through methyl beds one by one
     
     if(Methyl_call_type == "Modkit"){
-      tmpsampleData <- read.csv(methyl_bed_list[i], sep="\t", header=TRUE, nrows = 5)  
+      tmpsampleData <- read.csv(methyl_bed_list[i], sep="\t", header=bed_header, nrows = 5)  
       classes <- sapply(tmpsampleData, class)
       classes[c(3, 5, 7, 8, 9,12,13,14,15,16,17,18)] <- "NULL"
       #import the bed file
-      import_bedfile <- data.frame(purrr::map(methyl_bed_list[i], ~fread(.x, sep="\t", header=TRUE, colClasses = classes)))
+      import_bedfile <- data.frame(purrr::map(methyl_bed_list[i], ~fread(.x, sep="\t", header=bed_header, colClasses = classes)))
       import_bedfile$name<-gsub("m,*", "", import_bedfile$name)
       import_bedfile$name<-gsub("*,0", "", import_bedfile$name)
       import_bedfile<-import_bedfile[,c(1,2,4,5,6,3)]
     }else{
-    tmpsampleData <- read.csv(methyl_bed_list[i], sep="\t", header=FALSE, nrows = 5)
+    tmpsampleData <- read.csv(methyl_bed_list[i], sep="\t", header=bed_header, nrows = 5)
     classes <- sapply(tmpsampleData, class)
     #replace some columns to null to delete them
     classes[c(3, 4, 5, 7, 8, 9)] <- "NULL"
     #import the bed file
-    import_bedfile <- data.frame(purrr::map(methyl_bed_list[i], ~fread(.x, sep="\t", header=FALSE, colClasses = classes)))
+    import_bedfile <- data.frame(purrr::map(methyl_bed_list[i], ~fread(.x, sep="\t", header=bed_header, colClasses = classes)))
     }
     
     #call get_standard_methyl_bed function to clean up the bed file from each sample
