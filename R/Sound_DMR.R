@@ -1333,14 +1333,14 @@ split_by_chunk <- function(input_file, chunk_size, output_dir = "./chunks/") {
 #' This function takes in the methyl_bed file, subsets and then creates Methylated and unmethylated counts for each position to be used in the next steps.
 #' @param Methyl_bed (df) - Data frame containing the ONT methylation calls in a bed file for each individual separately
 #' @param Sample_ID (str) - A string that is used inplace of sample name to keep it uniform. We are using an enumerator to generate this based on the number of samples/individuals in the experiment.
-#' @param Methyl_call_type (str) - A string that includes information about the type of run. Currently this package works on Megalodon , DSP (DeepSignal Plant), Dorado and Bonito. Default call type is Dorado.
+#' @param Methyl_call_type (str) - A string that includes information about the type of run. Currently this package works on Megalodon , DSP (DeepSignal Plant), Modkit, Dorado and Bonito. Default call type is Modkit.
 #' @param max_read_depth (int) - This parameter can be used to filter out rows with high red depth such as highly repetative regions to not be included in the analysis. Default is 0. 
 #' @return Methyl_bed_sub (df) - Standard data frame methyl file for every individual with Meth, Unmeth and Per_Meth columns
 #' @import tidyverse
 #' @import stringr
 #' @export
 
-get_standard_methyl_bed <-function(Methyl_bed="Methyl.bed", Sample_ID = "S1", Methyl_call_type="Dorado", max_read_depth=100) {
+get_standard_methyl_bed <-function(Methyl_bed="Methyl.bed", Sample_ID = "S1", Methyl_call_type="Modkit", max_read_depth=100) {
   
   # Extract columns of interest based on which process was run
   #Columns of Interest include Chromosome|Position|Strand|Total_reads|Percent_Methylation|Cytosine_context
@@ -1387,7 +1387,7 @@ get_standard_methyl_bed <-function(Methyl_bed="Methyl.bed", Sample_ID = "S1", Me
 
 
 
-generate_megaframe <- function(methyl_bed_list=All_methyl_beds, Sample_count, Methyl_call_type="Dorado", File_prefix="", max_read_depth=100, bed_header=FALSE){
+generate_megaframe <- function(methyl_bed_list=All_methyl_beds, Sample_count, Methyl_call_type="Modkit", File_prefix="", max_read_depth=100, bed_header=FALSE){
   
   #QC
   QC <- missing(methyl_bed_list)
@@ -1397,12 +1397,12 @@ generate_megaframe <- function(methyl_bed_list=All_methyl_beds, Sample_count, Me
   }
   
   if(Methyl_call_type==""){
-    message("Methylation call type not given, using default type i.e Dorado \n")
+    message("Methylation call type not given, using default type i.e Modkit \n")
   }
   
   
   if (!(Methyl_call_type %in% c('DSP', 'Megalodon', 'Bonito', 'Dorado', "Modkit"))){
-    stop("Methylation call not recognized, use 'DSP' or 'Megalodon' or 'Bonito' or 'Dorado', exiting!")
+    stop("Methylation call not recognized, use 'DSP' or 'Megalodon' or 'Bonito' or 'Dorado' or 'Modkit', exiting!")
     
   }
   
@@ -1644,7 +1644,7 @@ generate_zoomframe <- function(gene_cord_df, MFrame, Gene_col, target_info=TRUE,
 #' @export
 
 generate_methylframe <-function(methyl_bed_list=All_methyl_beds, Sample_count = 0,
-                                Methyl_call_type="Dorado", filter_NAs=0, max_read_depth=100,
+                                Methyl_call_type="Modkit", filter_NAs=0, max_read_depth=100,
                                 gene_info = FALSE, gene_coordinate_file = NULL, Gene_column='',
                                 target_info=TRUE, gene_list = gene_coordinate_file[[Gene_column]],
                                 File_prefix="Sample")
