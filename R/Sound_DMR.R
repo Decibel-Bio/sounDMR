@@ -1427,9 +1427,11 @@ generate_megaframe <- function(methyl_bed_list=All_methyl_beds, Sample_count, Me
       classes[c(3, 5, 7, 8, 9,12,13,14,15,16,17,18)] <- "NULL"
       #import the bed file
       import_bedfile <- data.frame(purrr::map(methyl_bed_list[i], ~fread(.x, sep="\t", header=bed_header, colClasses = classes)))
-      import_bedfile$name<-gsub("m,*", "", import_bedfile$name)
-      import_bedfile$name<-gsub("*,0", "", import_bedfile$name)
-      import_bedfile<-import_bedfile[,c(1,2,4,5,6,3)]
+        if(length(gsub("m,*", "", import_bedfile$name))>0){
+        import_bedfile$name<-gsub("m,*", "", import_bedfile$name)
+        import_bedfile$name<-gsub("*,0", "", import_bedfile$name)
+        import_bedfile<-import_bedfile[,c(1,2,4,5,6,3)]
+          }
     }else{
     tmpsampleData <- read.csv(methyl_bed_list[i], sep="\t", header=bed_header, nrows = 5)
     classes <- sapply(tmpsampleData, class)
