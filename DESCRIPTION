@@ -2,8 +2,8 @@ Package: sounDMR
 Title: DMR analysis from ONT data
 Version: 2.5.1
 Authors@R: c(
-    person("Tom", "Cairns", email = "t.cairns@sound.ag", role = c("aut", "cre")),
-    person("Jack", "Colicchio", email = "j.colicchio@sound.ag", role = "aut"),
+    person("Jack", "Colicchio", email = "j.colicchio@sound.ag", role = c("aut", "cre)),
+    person("Tom", "Cairns", email = "t.cairns@sound.ag", role = c("aut", "cre)),
     person("Michael", "Flashman", email = "m.flashman@sound.ag", role = "aut"),
     person("Keerthana", "Prabhu", email = "k.prabhu@sound.ag", role = "aut"))
 Description: This package provides robust functions for DMR analysis. It takes in a megaframe,
