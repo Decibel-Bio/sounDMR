@@ -1428,6 +1428,7 @@ generate_megaframe <- function(methyl_bed_list=All_methyl_beds, Sample_count, Me
       #import the bed file
       import_bedfile <- data.frame(purrr::map(methyl_bed_list[i], ~fread(.x, sep="\t", header=bed_header, colClasses = classes)))
         if(length(gsub("m,*", "", import_bedfile$name))>0){
+        colnames(import_bedfile)<-c("Chromosome", "Position", "name", "strand", "TRs", "Pers")
         import_bedfile$name<-gsub("m,*", "", import_bedfile$name)
         import_bedfile$name<-gsub("*,0", "", import_bedfile$name)
         import_bedfile<-import_bedfile[,c(1,2,4,5,6,3)]
