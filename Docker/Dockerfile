@@ -11,7 +11,7 @@ RUN install2.r --error devtools
 
 # Install the SounDMR package.
 RUN R -e 'devtools::install_github("jokergoo/GetoptLong")'
-RUN R -e 'devtools::install_github("SoundAg/sounDMR")'
+RUN R -e 'devtools::install_github("Decibel-Bio/sounDMR")'
 COPY splitbychrw.R /opt/
 COPY splitbychunkw.R /opt/
 COPY getmethylframemultiplew.R /opt/
