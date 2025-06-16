@@ -1648,7 +1648,7 @@ generate_methylframe <-function(methyl_bed_list=All_methyl_beds, Sample_count = 
                                 Methyl_call_type="Modkit", filter_NAs=0, max_read_depth=100,
                                 gene_info = FALSE, gene_coordinate_file = NULL, Gene_column='',
                                 target_info=TRUE, gene_list = gene_coordinate_file[[Gene_column]],
-                                File_prefix="Sample")
+                                File_prefix="Sample", file_type_output = "text")
 {
   
   if (typeof(gene_info) != 'logical'){
@@ -1671,7 +1671,13 @@ generate_methylframe <-function(methyl_bed_list=All_methyl_beds, Sample_count = 
   
   Megaframe <- Megaframe[Megaframe$NAs<=(filter_NAs*3),]
   
+  if (file_type_output == "text"){
   write.table(Megaframe, paste(File_prefix, "MegaFrame.csv",sep="_"), row.names=F, sep=",")
+    }
+
+    if (file_type_output == "parquet"){
+  write_parquet(Megaframe, sink=paste(File_prefix, "MegaFrame.csv",sep="_"))
+    }
   
   message("Megaframe is now available in current directory and in the R-env!")
   
