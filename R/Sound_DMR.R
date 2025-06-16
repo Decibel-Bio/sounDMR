@@ -1676,7 +1676,7 @@ generate_methylframe <-function(methyl_bed_list=All_methyl_beds, Sample_count = 
     }
 
     if (file_type_output == "parquet"){
-  write_parquet(Megaframe, sink=paste(File_prefix, "MegaFrame.csv",sep="_"))
+  write_parquet(Megaframe, sink=paste(File_prefix, "MegaFrame.parquet",sep="_"))
     }
   
   message("Megaframe is now available in current directory and in the R-env!")
