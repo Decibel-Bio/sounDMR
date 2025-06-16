@@ -25,5 +25,6 @@ Depends:
 	tibble,
 	tidyr,
     data.table,
-	tidyverse
+	tidyverse,
+	arrow
 URL: https://github.com/SoundAg/sounDMR
