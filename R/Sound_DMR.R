@@ -1387,7 +1387,7 @@ get_standard_methyl_bed <-function(Methyl_bed="Methyl.bed", Sample_ID = "S1", Me
 
 
 
-generate_megaframe <- function(methyl_bed_list=All_methyl_beds, Sample_count, Methyl_call_type="Modkit", File_prefix="", max_read_depth=100, bed_header=FALSE){
+generate_megaframe <- function(methyl_bed_list=All_methyl_beds, Sample_count, Methyl_call_type="Modkit", File_prefix="", max_read_depth=100, bed_header=TRUE){
   
   #QC
   QC <- missing(methyl_bed_list)
@@ -1648,7 +1648,7 @@ generate_methylframe <-function(methyl_bed_list=All_methyl_beds, Sample_count = 
                                 Methyl_call_type="Modkit", filter_NAs=0, max_read_depth=100,
                                 gene_info = FALSE, gene_coordinate_file = NULL, Gene_column='',
                                 target_info=TRUE, gene_list = gene_coordinate_file[[Gene_column]],
-                                File_prefix="Sample", file_type_output = "text")
+                                File_prefix="Sample", file_type_output = "text", bed_header = TRUE)
 {
   
   if (typeof(gene_info) != 'logical'){
@@ -1665,7 +1665,7 @@ generate_methylframe <-function(methyl_bed_list=All_methyl_beds, Sample_count = 
   }
   
   Megaframe <- generate_megaframe(methyl_bed_list=methyl_bed_list, Sample_count = Sample_count,
-                                  Methyl_call_type=Methyl_call_type, max_read_depth=max_read_depth, File_prefix=File_prefix)
+                                  Methyl_call_type=Methyl_call_type, max_read_depth=max_read_depth, File_prefix=File_prefix, bed_header=bed_header)
   
   message('\nNOTE: Filtering NAs default is set to ',filter_NAs ,' (Total_samples/2). See documentation for ideas on how to use the filter \n')
   
