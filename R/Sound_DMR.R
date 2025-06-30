@@ -173,17 +173,20 @@ create_dmr_obj <- function(ZoomFrame = dataframe,
   print('Step 7: aggregating by plant')
   
   LongPercent$total_RD<-LongMeth$total_RD
-  
+
+  if(nrow(experimental_design_df)!=length(unique(experimental_design_df$Individual))){
+    
   LongPercent <- LongPercent %>%
     mutate(Percent = weighted.mean(Percent, total_RD, na.rm = T), .by=c(Plant,Group, Chromosome, Position, Zeroth_pos))
   
   LongMeth <- LongMeth %>%
     group_by(Gene, Zeroth_pos, Plant, Position, CX, Strand, Group, Chromosome) %>%
     summarize(total_RD = sum(total_RD, na.rm = T))
-  
-  LongMeth <- LongMeth[,c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
+    }
+
+    LongMeth <- LongMeth[,c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
                           'Zeroth_pos', 'Plant', 'total_RD', 'Group')]
-  
+    
   # Save all the outputs
   out <- list()
   out$ZoomFrame_filtered <- ZoomFrame_filtered
