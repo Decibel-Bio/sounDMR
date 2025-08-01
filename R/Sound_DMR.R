@@ -551,15 +551,16 @@ save_model_summary <- function(i, Output_Frame, model_summary, ind_name = '') {
 #'
 
 run_binomial <- function(LM, i = int, formula,
-                         optimizer_func = 'optimizer') {
-  binom_model <- glmer(formula, data=LM, family = binomial,
-                       glmerControl(check.conv.grad = .makeCC(action = "stop",
-                                                              tol = 2e-3, relTol = NULL),
-                                    optimizer=optimizer_func, optCtrl = list(maxfun = 500000)))
-  # Outputs of this model
-  model_summary <- as.data.frame(summary(binom_model)$coefficients)
-  
-  return(model_summary)
+optimizer_func = 'optimizer', control=" ") {
+LM$Treatment<-as.factor(LM$Treatment)
+LM$Treatment <- relevel(LM$Treatment, ref = control)
+binom_model <- glmer(formula, data=LM, family = binomial,
+glmerControl(check.conv.grad = .makeCC(action = "stop",
+tol = 2e-3, relTol = NULL),
+optimizer=optimizer_func, optCtrl = list(maxfun = 500000)))
+# Outputs of this model
+model_summary <- as.data.frame(summary(binom_model)$coefficients)
+return(model_summary)
 }
 
 
@@ -577,39 +578,37 @@ run_binomial <- function(LM, i = int, formula,
 #'
 
 run_model <- function(data, i, input_frame, formula, model_type,
-                      individual_name_z = ''){
-  if (model_type == 'binomial') {
-    tryCatch({
-      ith_model_summary <- run_binomial(data, i, formula, 'bobyqa')
-      input_frame <- save_model_summary(i, input_frame, ith_model_summary,individual_name_z)
-      # If that model didn't converge, it tried again with a different optimizer, allows ~20% more model convergence
-    },error = function(e){tryCatch({ print(paste(i, "No bobyqa Converge, trying Nelder"))
-      # Run the model with Nelder_Mead optimizer
-      ith_model_summary <- run_binomial(data, i, formula, 'Nelder_Mead')
-      input_frame <- save_model_summary(i, input_frame, ith_model_summary,individual_name_z)
-      
-    }, error=function(e){print(paste(i, "No Converge"))})
-    })
-  } else if (model_type == 'beta-binomial') {
-    tryCatch({
-      #The model in the individual version will generally be this, but if complex design, potentially can be multi-factorial
-      beta_binomial <- glmmTMB(formula, data=data,
-                               family=betabinomial(link = "logit"),
-                               control=glmmTMBControl(
-                                 optimizer=optim, optArgs=list(method="BFGS")))
-      
-      # Save the model output
-      ith_model_summary <- as.data.frame(summary(beta_binomial)$coefficients$cond)
-      input_frame <- save_model_summary(i, input_frame, ith_model_summary,
-                                        individual_name_z)
-    }, error=function(e){
-      #print(paste(i, "No Converge"))
-      paste(i, 'No Converge')
-    })
-  } else {
-    print('Please choose a model type of "binomial" or "beta-binomial".')
-  }
-  return(input_frame)
+individual_name_z = '', control=" "){
+if (model_type == 'binomial') {
+tryCatch({
+ith_model_summary <- run_binomial(data, i, formula, 'bobyqa', control)
+input_frame <- save_model_summary(i, input_frame, ith_model_summary,individual_name_z)
+# If that model didn't converge, it tried again with a different optimizer, allows ~20% more model convergence
+},error = function(e){tryCatch({ print(paste(i, "No bobyqa Converge, trying Nelder"))
+# Run the model with Nelder_Mead optimizer
+ith_model_summary <- run_binomial(data, i, formula, 'Nelder_Mead', control)
+input_frame <- save_model_summary(i, input_frame, ith_model_summary,individual_name_z)
+}, error=function(e){print(paste(i, "No Converge"))})
+})
+} else if (model_type == 'beta-binomial') {
+tryCatch({
+#The model in the individual version will generally be this, but if complex design, potentially can be multi-factorial
+beta_binomial <- glmmTMB(formula, data=data,
+family=betabinomial(link = "logit"),
+control=glmmTMBControl(
+optimizer=optim, optArgs=list(method="BFGS")))
+# Save the model output
+ith_model_summary <- as.data.frame(summary(beta_binomial)$coefficients$cond)
+input_frame <- save_model_summary(i, input_frame, ith_model_summary,
+individual_name_z)
+}, error=function(e){
+#print(paste(i, "No Converge"))
+paste(i, 'No Converge')
+})
+} else {
+print('Please choose a model type of "binomial" or "beta-binomial".')
+}
+return(input_frame)
 }
 
 #' Group DMR Analysis
@@ -632,54 +631,48 @@ run_model <- function(data, i, input_frame, formula, model_type,
 #' @export
 
 group_DMR <- function(methyl_sum, ZoomFrame_filtered, experimental_design_df, fixed = c('Group'),
-                      random = c('Plant'), reads_threshold = 3, model = 'binomial',
-                      colnames_of_interest = c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
-                                               'Zeroth_pos', 'Individual')) {
-  #  Create the model formula first
-  formula <- create_formula(fixed, random)
-  print(formula)
-  
-  #  Get the number of columns in the Output_Frame dataframe
-  original_methyl_sum_col_number <- ncol(methyl_sum)
-  
-  # The modelling here is the most "delicate" part of the operation.  Options include:
-  # (A) cbind(Meth, UnMeth) ~ (1|Plant) + Treatment
-  # (B) cbind(Meth, UnMeth) ~ (1|Plant) + Treatment + Generation
-  # (C) cbind(Meth, UnMeth) ~ (1|Plant) + Treatment + Generation +Treatment*Generation
-  # (D) cbind(Meth, UnMeth) ~ (1|Plant) + Gene_Expression
-  # (E) cbind(Meth, UnMeth) ~ (1|Plant) + Phenotype
-  
-  # Loop to run groupwise analysis for each BP
-  for(i in 1:nrow(methyl_sum)){
-    
-    ZoomFrame_filtered_temp <- ZoomFrame_filtered[i,]  
-    # Make long version of input frame for the i'th cytosine row
-    LM <- pivot_and_subset(ZoomFrame_filtered_temp, 'Meth', 'Meth',
-                           colnames_of_interest = c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
-                                                    'Zeroth_pos', 'Individual'))
-    LM$Individual <- gsub("Meth_","", LM$Individual, perl = T)
-    # For rows with at least X(3) methylated reads across all individuals, move forward
-    if(sum(as.numeric(LM$Meth), na.rm=TRUE) >= reads_threshold){
-      # Do the same thing for unmethylated reads
-      LUM <- pivot_and_subset(ZoomFrame_filtered_temp, 'UnMeth', 'UnMeth',
-                              colnames_of_interest = c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
-                                                       'Zeroth_pos', 'Individual'))
-      LM <- cbind(LM,LUM[,ncol(LUM)])
-      # Merge with experimental_design_df to allow for DML testing for that base
-      LM <- LM %>% left_join(experimental_design_df, by=c('Individual'='ID'))
-      
-      # Has to have Y unmethylated reads across all individuials
-      if(sum(as.numeric(LM$UnMeth), na.rm=TRUE) >= reads_threshold){
-        # Run the model and save the output
-        methyl_sum <- run_model(LM, i, methyl_sum, formula, model)
-        rm(LM, LUM, ZoomFrame_filtered_temp)
-      }
-    }
-  }
-  #  Replace NA values in these columns with 0s
-  methyl_sum[,original_methyl_sum_col_number:ncol(methyl_sum)][is.na(methyl_sum[,original_methyl_sum_col_number:ncol(methyl_sum)])] = 0
-  
-  return(methyl_sum)
+random = c('Plant'), reads_threshold = 3, model = 'binomial',
+colnames_of_interest = c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
+'Zeroth_pos', 'Individual'), control=" ") {
+#  Create the model formula first
+formula <- create_formula(fixed, random)
+print(formula)
+#  Get the number of columns in the Output_Frame dataframe
+original_methyl_sum_col_number <- ncol(methyl_sum)
+# The modelling here is the most "delicate" part of the operation.  Options include:
+# (A) cbind(Meth, UnMeth) ~ (1|Plant) + Treatment
+# (B) cbind(Meth, UnMeth) ~ (1|Plant) + Treatment + Generation
+# (C) cbind(Meth, UnMeth) ~ (1|Plant) + Treatment + Generation +Treatment*Generation
+# (D) cbind(Meth, UnMeth) ~ (1|Plant) + Gene_Expression
+# (E) cbind(Meth, UnMeth) ~ (1|Plant) + Phenotype
+# Loop to run groupwise analysis for each BP
+for(i in 1:nrow(methyl_sum)){
+ZoomFrame_filtered_temp <- ZoomFrame_filtered[i,]
+# Make long version of input frame for the i'th cytosine row
+LM <- pivot_and_subset(ZoomFrame_filtered_temp, 'Meth', 'Meth',
+colnames_of_interest = c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
+'Zeroth_pos', 'Individual'))
+LM$Individual <- gsub("Meth_","", LM$Individual, perl = T)
+# For rows with at least X(3) methylated reads across all individuals, move forward
+if(sum(as.numeric(LM$Meth), na.rm=TRUE) >= reads_threshold){
+# Do the same thing for unmethylated reads
+LUM <- pivot_and_subset(ZoomFrame_filtered_temp, 'UnMeth', 'UnMeth',
+colnames_of_interest = c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
+'Zeroth_pos', 'Individual'))
+LM <- cbind(LM,LUM[,ncol(LUM)])
+# Merge with experimental_design_df to allow for DML testing for that base
+LM <- LM %>% left_join(experimental_design_df, by=c('Individual'='ID'))
+# Has to have Y unmethylated reads across all individuials
+if(sum(as.numeric(LM$UnMeth), na.rm=TRUE) >= reads_threshold){
+# Run the model and save the output
+methyl_sum <- run_model(LM, i, methyl_sum, formula, model, control=control)
+rm(LM, LUM, ZoomFrame_filtered_temp)
+}
+}
+}
+#  Replace NA values in these columns with 0s
+methyl_sum[,original_methyl_sum_col_number:ncol(methyl_sum)][is.na(methyl_sum[,original_methyl_sum_col_number:ncol(methyl_sum)])] = 0
+return(methyl_sum)
 }
 
 #' Individual DMR Analysis
@@ -752,26 +745,26 @@ individual_DMR <- function(methyl_sum, ZoomFrame_filtered, experimental_design_d
 #' @export
 
 find_DMR<- function(methyl_sum, dmr_obj, fixed = c('Group'),
-                    random = c('Plant'), reads_threshold = 3,
-                    model, control = '', analysis_type) {
-  # The required columns
-  colnames_of_interest <- c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
-                            'Zeroth_pos', 'Plant')
-  if (tolower(analysis_type) == 'group') {
-    Output_Frame <- group_DMR(methyl_sum, dmr_obj$ZoomFrame_filtered,
-                              dmr_obj$experimental_design_df,
-                              fixed = fixed,random = random, colnames_of_interest,
-                              reads_threshold = reads_threshold, model = model)
-  } else if (tolower(analysis_type) == 'individual') {
-    Output_Frame <- individual_DMR(methyl_sum, dmr_obj$ZoomFrame_filtered,
-                                   dmr_obj$experimental_design_df,
-                                   fixed = fixed, random = random,
-                                   reads_threshold = reads_threshold,
-                                   control = control, model = model)
-  } else {
-    print(paste(analysis_type, 'analysis type not supported. Please try "individual" or "group"'))
-  }
-  return(Output_Frame)
+random = c('Plant'), reads_threshold = 3,
+model, control = " ", analysis_type) {
+# The required columns
+colnames_of_interest <- c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
+'Zeroth_pos', 'Plant')
+if (tolower(analysis_type) == 'group') {
+Output_Frame <- group_DMR(methyl_sum, dmr_obj$ZoomFrame_filtered,
+dmr_obj$experimental_design_df,
+fixed = fixed,random = random, colnames_of_interest,
+reads_threshold = reads_threshold, model = model, control=control)
+} else if (tolower(analysis_type) == 'individual') {
+Output_Frame <- individual_DMR(methyl_sum, dmr_obj$ZoomFrame_filtered,
+dmr_obj$experimental_design_df,
+fixed = fixed, random = random,
+reads_threshold = reads_threshold,
+control = control, model = model)
+} else {
+print(paste(analysis_type, 'analysis type not supported. Please try "individual" or "group"'))
+}
+return(Output_Frame)
 }
 
 #'  Find the Columns for Changepoint Analysis
