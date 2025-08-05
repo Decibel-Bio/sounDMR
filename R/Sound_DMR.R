@@ -1208,6 +1208,7 @@ sound_score <- function(changepoint_OF = dataframe, Statistic="Z_GroupT_small",
   #Calculate Sound Statistic
   RegionStats$dmr_score<-(((RegionStats$Count)^(1/3))*(abs(RegionStats[[MethRegion_Z]])*abs(RegionStats[[Per_Change]]))^(1/2))
   RegionStats$dmr_score2<-(((RegionStats$Count)^(1/3))*(abs(RegionStats[[MethRegion_Z]])*abs(asin(sqrt(RegionStats[[Per_Change]]/100+RegionStats[[Control]]/100))-asin(sqrt(RegionStats[[Control]]/100)))^(1/2)))
+  RegionStats$dmr_score_noZ<-(((RegionStats$Count)^(1/3))*abs(RegionStats[[Per_Change]]))^(1/2))
   # if(CF==TRUE){
   #   RegionStats$CustomFunction<<-UserFunction
   #   RegionStats$CustomFunction_Percentile<-ecdf(RegionStats$CustomFunction)(RegionStats$CustomFunction)
@@ -1219,6 +1220,8 @@ sound_score <- function(changepoint_OF = dataframe, Statistic="Z_GroupT_small",
         RegionStats$dmr_score_Percentile<-ecdf(RegionStats$dmr_score)(RegionStats$dmr_score)
         RegionStats$dmr_score2[i]<-RegionStats$dmr_score2[i]*-1
         RegionStats$dmr_score2_Percentile<-ecdf(RegionStats$dmr_score2)(RegionStats$dmr_score2)
+        RegionStats$dmr_score_noZ[i]<-RegionStats$dmr_score_noZ[i]*-1
+        RegionStats$dmr_score2_Percentile<-ecdf(RegionStats$dmr_score_noZ)(RegionStats$dmr_score_noZ)
       }
     }
   }
