@@ -1218,6 +1218,14 @@ sound_score <- function(changepoint_OF = dataframe, Statistic="Z_GroupT_small",
       }
     }
   }
+
+ RegionStats$dmr_score[!is.finite(RegionStats$dmr_score)] <- 0
+ RegionStats$dmr_score2[!is.finite(RegionStats$dmr_score2)] <- 0
+ RegionStats$dmr_score_noZ[!is.finite(RegionStats$dmr_score_noZ)] <- 0
+ RegionStats$dmr_score_Percentile[!is.finite(RegionStats$dmr_score_Percentile)] <- 0.5
+ RegionStats$dmr_score2_Percentile[!is.finite(RegionStats$dmr_score2_Percentile)] <- 0.5
+ RegionStats$dmr_score_noZ_Percentile[!is.finite(RegionStats$dmr_score_noZ_Percentile)] <- 0.5
+  
   plot(RegionStats$dmr_score2_Percentile, RegionStats$dmr_score2)
   plot <- RegionStats %>%
     ggplot(aes(x = .data[[MethRegion_Z]], y = Count)) +
