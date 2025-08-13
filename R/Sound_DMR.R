@@ -1196,7 +1196,7 @@ sound_score <- function(changepoint_OF = dataframe, Statistic="Z_GroupT_small",
     summarise_at(vars(one_of(keep_cols)), mean)
   Ag_Pos <- cp_OF %>%
     group_by(cp_group) %>%
-    summarise(Start=min(Zeroth_pos), Stop=max(Zeroth_pos))
+    summarise(Chr=unique(Chromosome),Start=min(Zeroth_pos), Stop=max(Zeroth_pos), Genome_Low=min(Position), Genome_High=max(Position))
   RegionStats <- cbind(Ag_Pos, RegionStats[,-1])
   #Calculate Sound Statistic
   RegionStats$dmr_score<-(((RegionStats$Count)^(1/3))*(abs(RegionStats[[MethRegion_Z]])*abs(RegionStats[[Per_Change]]))^(1/2))
