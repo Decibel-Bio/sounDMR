@@ -1852,3 +1852,38 @@ boot_score<-function(sound_score_obj = NA, target_gene= NA, target_start=-1000, 
   return(Boot_Obj)
   
 }
+
+#' Compare Target vs. Off-Target Treatments
+#'
+#' A function to calculate differences between target group and off-targets
+#'
+#' @param Target (str) - Name of the treatment group of interest
+#' @param N_Treat_Groups (val) - Number of other groups
+#' @param new_column_name (str) - Name of created column
+#' @param ms (df) - Methylsummary file
+#' @return ms (df) - MS file with new column
+#' @export
+
+                                
+Treatment_Compare<-function(Target="T1", N_Treat_Groups=8, new_column_name="on_v_off_T1", ms=methyl_summary){
+  ms[new_column_name]<-(ms[Target]-ms$Treated)*(N_Treat_Groups/(N_Treat_Groups-1))
+  return(ms)
+}
+
+#' Compare methylation in all groups at a changepot region
+#'
+#' Plotting function to compare methylation at a cpt of interest
+#'
+#' @param cpt_id (str) - Name of the cpt of interest
+#' @param dmr_obj (list) - Name of dmr_obj
+#' @export
+
+
+cpt_compare<-function(cpt_id="LsAGL24_CHH_6", dmr_score_obj=DMR_score_AGL24_Z){
+  OT<-dmr_score_obj$methyl_summary[dmr_score_obj$methyl_summary$cp_group==cpt_id,]
+  stacked_data <- stack(OT[,str_ends(colnames(OT), "mean")])
+  ggplot(stacked_data, aes(x=ind,y=values))+geom_violin(aes(fill=ind))+ 
+    stat_summary(fun = "mean",
+                 geom = "point",
+                 color = "black")
+}
