@@ -1193,7 +1193,7 @@ sound_score <- function(changepoint_OF = dataframe, Statistic="Z_GroupT_small",
     group_by(cp_group) %>%
     mutate(Count = n()) %>%
     group_by(cp_group, Gene,CX, Count) %>%
-    summarise_at(vars(one_of(keep_cols)), mean)
+    summarise_at(vars(one_of(keep_cols)), mean, na.rm=TRUE)
   Ag_Pos <- cp_OF %>%
     group_by(cp_group) %>%
     summarise(Chr=unique(Chromosome),Start=min(Zeroth_pos), Stop=max(Zeroth_pos), Genome_Low=min(Position), Genome_High=max(Position))
