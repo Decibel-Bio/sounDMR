@@ -1882,8 +1882,9 @@ Treatment_Compare<-function(Target="T1", N_Treat_Groups=8, new_column_name="on_v
 cpt_compare<-function(cpt_id="LsAGL24_CHH_6", dmr_score_obj=DMR_score_AGL24_Z){
   OT<-dmr_score_obj$methyl_summary[dmr_score_obj$methyl_summary$cp_group==cpt_id,]
   stacked_data <- stack(OT[,str_ends(colnames(OT), "mean")])
-  ggplot(stacked_data, aes(x=ind,y=values))+geom_violin(aes(fill=ind))+ 
+  ggplot(stacked_data, aes(x=ind,y=values))+geom_boxplot(outlier.shape = NA)+ 
     stat_summary(fun = "mean",
                  geom = "point",
-                 color = "black")
+                 color = "red")+ylab("Percent Methylation")+xlab("Treatment Group")+ggtitle(as.character(OT$cp_group[1]))
 }
+
