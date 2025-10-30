@@ -551,7 +551,7 @@ save_model_summary <- function(i, Output_Frame, model_summary, ind_name = '') {
 #'
 
 run_binomial <- function(LM, i = int, formula,
-                         optimizer_func = 'optimizer', control=" ") {
+                         optimizer_func = 'optimizer', control=" ", target_variable="Treatment") {
   LM[,target_variable]<-as.factor(LM[,target_variable])
   LM[,target_variable] <- relevel(LM[,target_variable], ref = control)
   binom_model <- glmer(formula, data=LM, family = binomial,
@@ -578,15 +578,15 @@ run_binomial <- function(LM, i = int, formula,
 #'
 
 run_model <- function(data, i, input_frame, formula, model_type,
-                      individual_name_z = '', control=" "){
+                      individual_name_z = '', control=" ", target_variable="Treatment"){
   if (model_type == 'binomial') {
     tryCatch({
-      ith_model_summary <- run_binomial(data, i, formula, 'bobyqa', control)
+      ith_model_summary <- run_binomial(data, i, formula, 'bobyqa', control, target_variable)
       input_frame <- save_model_summary(i, input_frame, ith_model_summary,individual_name_z)
       # If that model didn't converge, it tried again with a different optimizer, allows ~20% more model convergence
     },error = function(e){tryCatch({ print(paste(i, "No bobyqa Converge, trying Nelder"))
       # Run the model with Nelder_Mead optimizer
-      ith_model_summary <- run_binomial(data, i, formula, 'Nelder_Mead', control)
+      ith_model_summary <- run_binomial(data, i, formula, 'Nelder_Mead', control, target_variable)
       input_frame <- save_model_summary(i, input_frame, ith_model_summary,individual_name_z)
     }, error=function(e){print(paste(i, "No Converge"))})
     })
@@ -633,7 +633,7 @@ run_model <- function(data, i, input_frame, formula, model_type,
 group_DMR <- function(methyl_sum, ZoomFrame_filtered, experimental_design_df, fixed = c('Group'),
                       random = c('Plant'), reads_threshold = 3, model = 'binomial',
                       colnames_of_interest = c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
-                                               'Zeroth_pos', 'Individual'), control=" ") {
+                                               'Zeroth_pos', 'Individual'), control=" ", target_variable="Treatment") {
   #  Create the model formula first
   formula <- create_formula(fixed, random)
   print(formula)
@@ -665,7 +665,7 @@ group_DMR <- function(methyl_sum, ZoomFrame_filtered, experimental_design_df, fi
       # Has to have Y unmethylated reads across all individuials
       if(sum(as.numeric(LM$UnMeth), na.rm=TRUE) >= reads_threshold){
         # Run the model and save the output
-        methyl_sum <- run_model(LM, i, methyl_sum, formula, model, control=control)
+        methyl_sum <- run_model(LM, i, methyl_sum, formula, model, control=control, target_variable=target_variable)
         rm(LM, LUM, ZoomFrame_filtered_temp)
       }
     }
@@ -746,7 +746,7 @@ individual_DMR <- function(methyl_sum, ZoomFrame_filtered, experimental_design_d
 
 find_DMR<- function(methyl_sum, dmr_obj, fixed = c('Group'),
                     random = c('Plant'), reads_threshold = 3,
-                    model, control = " ", analysis_type) {
+                    model, control = " ", analysis_type, target_variable = "Treatment") {
   # The required columns
   colnames_of_interest <- c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
                             'Zeroth_pos', 'Plant')
@@ -754,7 +754,7 @@ find_DMR<- function(methyl_sum, dmr_obj, fixed = c('Group'),
     Output_Frame <- group_DMR(methyl_sum, dmr_obj$ZoomFrame_filtered,
                               dmr_obj$experimental_design_df,
                               fixed = fixed,random = random, colnames_of_interest,
-                              reads_threshold = reads_threshold, model = model, control=control)
+                              reads_threshold = reads_threshold, model = model, control=control, target_variable=target_variable)
   } else if (tolower(analysis_type) == 'individual') {
     Output_Frame <- individual_DMR(methyl_sum, dmr_obj$ZoomFrame_filtered,
                                    dmr_obj$experimental_design_df,
@@ -1903,3 +1903,4 @@ for(i in 1:nrow(sig_dmrs)){
   ggsave(paste(prefix,as.character(sig_dmrs[i,1]), ".pdf", sep=""), height = 5, width=7)
 }
 }
+
