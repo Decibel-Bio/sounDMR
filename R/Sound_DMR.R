@@ -173,20 +173,20 @@ create_dmr_obj <- function(ZoomFrame = dataframe,
   print('Step 7: aggregating by plant')
   
   LongPercent$total_RD<-LongMeth$total_RD
-
+  
   if(nrow(experimental_design_df)!=length(unique(experimental_design_df$Individual))){
     
-  LongPercent <- LongPercent %>%
-    mutate(Percent = weighted.mean(Percent, total_RD, na.rm = T), .by=c(Plant,Group, Chromosome, Position, Zeroth_pos))
-  
-  LongMeth <- LongMeth %>%
-    group_by(Gene, Zeroth_pos, Plant, Position, CX, Strand, Group, Chromosome) %>%
-    summarize(total_RD = sum(total_RD, na.rm = T))
-    }
-
-    LongMeth <- LongMeth[,c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
-                          'Zeroth_pos', 'Plant', 'total_RD', 'Group')]
+    LongPercent <- LongPercent %>%
+      mutate(Percent = weighted.mean(Percent, total_RD, na.rm = T), .by=c(Plant,Group, Chromosome, Position, Zeroth_pos))
     
+    LongMeth <- LongMeth %>%
+      group_by(Gene, Zeroth_pos, Plant, Position, CX, Strand, Group, Chromosome) %>%
+      summarize(total_RD = sum(total_RD, na.rm = T))
+  }
+  
+  LongMeth <- LongMeth[,c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
+                          'Zeroth_pos', 'Plant', 'total_RD', 'Group')]
+  
   # Save all the outputs
   out <- list()
   out$ZoomFrame_filtered <- ZoomFrame_filtered
@@ -551,16 +551,16 @@ save_model_summary <- function(i, Output_Frame, model_summary, ind_name = '') {
 #'
 
 run_binomial <- function(LM, i = int, formula,
-optimizer_func = 'optimizer', control=" ") {
-LM$Treatment<-as.factor(LM$Treatment)
-LM$Treatment <- relevel(LM$Treatment, ref = control)
-binom_model <- glmer(formula, data=LM, family = binomial,
-glmerControl(check.conv.grad = .makeCC(action = "stop",
-tol = 2e-3, relTol = NULL),
-optimizer=optimizer_func, optCtrl = list(maxfun = 500000)))
-# Outputs of this model
-model_summary <- as.data.frame(summary(binom_model)$coefficients)
-return(model_summary)
+                         optimizer_func = 'optimizer', control=" ") {
+  LM[,target_variable]<-as.factor(LM[,target_variable])
+  LM[,target_variable] <- relevel(LM[,target_variable], ref = control)
+  binom_model <- glmer(formula, data=LM, family = binomial,
+                       glmerControl(check.conv.grad = .makeCC(action = "stop",
+                                                              tol = 2e-3, relTol = NULL),
+                                    optimizer=optimizer_func, optCtrl = list(maxfun = 500000)))
+  # Outputs of this model
+  model_summary <- as.data.frame(summary(binom_model)$coefficients)
+  return(model_summary)
 }
 
 
@@ -578,37 +578,37 @@ return(model_summary)
 #'
 
 run_model <- function(data, i, input_frame, formula, model_type,
-individual_name_z = '', control=" "){
-if (model_type == 'binomial') {
-tryCatch({
-ith_model_summary <- run_binomial(data, i, formula, 'bobyqa', control)
-input_frame <- save_model_summary(i, input_frame, ith_model_summary,individual_name_z)
-# If that model didn't converge, it tried again with a different optimizer, allows ~20% more model convergence
-},error = function(e){tryCatch({ print(paste(i, "No bobyqa Converge, trying Nelder"))
-# Run the model with Nelder_Mead optimizer
-ith_model_summary <- run_binomial(data, i, formula, 'Nelder_Mead', control)
-input_frame <- save_model_summary(i, input_frame, ith_model_summary,individual_name_z)
-}, error=function(e){print(paste(i, "No Converge"))})
-})
-} else if (model_type == 'beta-binomial') {
-tryCatch({
-#The model in the individual version will generally be this, but if complex design, potentially can be multi-factorial
-beta_binomial <- glmmTMB(formula, data=data,
-family=betabinomial(link = "logit"),
-control=glmmTMBControl(
-optimizer=optim, optArgs=list(method="BFGS")))
-# Save the model output
-ith_model_summary <- as.data.frame(summary(beta_binomial)$coefficients$cond)
-input_frame <- save_model_summary(i, input_frame, ith_model_summary,
-individual_name_z)
-}, error=function(e){
-#print(paste(i, "No Converge"))
-paste(i, 'No Converge')
-})
-} else {
-print('Please choose a model type of "binomial" or "beta-binomial".')
-}
-return(input_frame)
+                      individual_name_z = '', control=" "){
+  if (model_type == 'binomial') {
+    tryCatch({
+      ith_model_summary <- run_binomial(data, i, formula, 'bobyqa', control)
+      input_frame <- save_model_summary(i, input_frame, ith_model_summary,individual_name_z)
+      # If that model didn't converge, it tried again with a different optimizer, allows ~20% more model convergence
+    },error = function(e){tryCatch({ print(paste(i, "No bobyqa Converge, trying Nelder"))
+      # Run the model with Nelder_Mead optimizer
+      ith_model_summary <- run_binomial(data, i, formula, 'Nelder_Mead', control)
+      input_frame <- save_model_summary(i, input_frame, ith_model_summary,individual_name_z)
+    }, error=function(e){print(paste(i, "No Converge"))})
+    })
+  } else if (model_type == 'beta-binomial') {
+    tryCatch({
+      #The model in the individual version will generally be this, but if complex design, potentially can be multi-factorial
+      beta_binomial <- glmmTMB(formula, data=data,
+                               family=betabinomial(link = "logit"),
+                               control=glmmTMBControl(
+                                 optimizer=optim, optArgs=list(method="BFGS")))
+      # Save the model output
+      ith_model_summary <- as.data.frame(summary(beta_binomial)$coefficients$cond)
+      input_frame <- save_model_summary(i, input_frame, ith_model_summary,
+                                        individual_name_z)
+    }, error=function(e){
+      #print(paste(i, "No Converge"))
+      paste(i, 'No Converge')
+    })
+  } else {
+    print('Please choose a model type of "binomial" or "beta-binomial".')
+  }
+  return(input_frame)
 }
 
 #' Group DMR Analysis
@@ -631,48 +631,48 @@ return(input_frame)
 #' @export
 
 group_DMR <- function(methyl_sum, ZoomFrame_filtered, experimental_design_df, fixed = c('Group'),
-random = c('Plant'), reads_threshold = 3, model = 'binomial',
-colnames_of_interest = c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
-'Zeroth_pos', 'Individual'), control=" ") {
-#  Create the model formula first
-formula <- create_formula(fixed, random)
-print(formula)
-#  Get the number of columns in the Output_Frame dataframe
-original_methyl_sum_col_number <- ncol(methyl_sum)
-# The modelling here is the most "delicate" part of the operation.  Options include:
-# (A) cbind(Meth, UnMeth) ~ (1|Plant) + Treatment
-# (B) cbind(Meth, UnMeth) ~ (1|Plant) + Treatment + Generation
-# (C) cbind(Meth, UnMeth) ~ (1|Plant) + Treatment + Generation +Treatment*Generation
-# (D) cbind(Meth, UnMeth) ~ (1|Plant) + Gene_Expression
-# (E) cbind(Meth, UnMeth) ~ (1|Plant) + Phenotype
-# Loop to run groupwise analysis for each BP
-for(i in 1:nrow(methyl_sum)){
-ZoomFrame_filtered_temp <- ZoomFrame_filtered[i,]
-# Make long version of input frame for the i'th cytosine row
-LM <- pivot_and_subset(ZoomFrame_filtered_temp, 'Meth', 'Meth',
-colnames_of_interest = c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
-'Zeroth_pos', 'Individual'))
-LM$Individual <- gsub("Meth_","", LM$Individual, perl = T)
-# For rows with at least X(3) methylated reads across all individuals, move forward
-if(sum(as.numeric(LM$Meth), na.rm=TRUE) >= reads_threshold){
-# Do the same thing for unmethylated reads
-LUM <- pivot_and_subset(ZoomFrame_filtered_temp, 'UnMeth', 'UnMeth',
-colnames_of_interest = c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
-'Zeroth_pos', 'Individual'))
-LM <- cbind(LM,LUM[,ncol(LUM)])
-# Merge with experimental_design_df to allow for DML testing for that base
-LM <- LM %>% left_join(experimental_design_df, by=c('Individual'='ID'))
-# Has to have Y unmethylated reads across all individuials
-if(sum(as.numeric(LM$UnMeth), na.rm=TRUE) >= reads_threshold){
-# Run the model and save the output
-methyl_sum <- run_model(LM, i, methyl_sum, formula, model, control=control)
-rm(LM, LUM, ZoomFrame_filtered_temp)
-}
-}
-}
-#  Replace NA values in these columns with 0s
-methyl_sum[,original_methyl_sum_col_number:ncol(methyl_sum)][is.na(methyl_sum[,original_methyl_sum_col_number:ncol(methyl_sum)])] = 0
-return(methyl_sum)
+                      random = c('Plant'), reads_threshold = 3, model = 'binomial',
+                      colnames_of_interest = c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
+                                               'Zeroth_pos', 'Individual'), control=" ") {
+  #  Create the model formula first
+  formula <- create_formula(fixed, random)
+  print(formula)
+  #  Get the number of columns in the Output_Frame dataframe
+  original_methyl_sum_col_number <- ncol(methyl_sum)
+  # The modelling here is the most "delicate" part of the operation.  Options include:
+  # (A) cbind(Meth, UnMeth) ~ (1|Plant) + Treatment
+  # (B) cbind(Meth, UnMeth) ~ (1|Plant) + Treatment + Generation
+  # (C) cbind(Meth, UnMeth) ~ (1|Plant) + Treatment + Generation +Treatment*Generation
+  # (D) cbind(Meth, UnMeth) ~ (1|Plant) + Gene_Expression
+  # (E) cbind(Meth, UnMeth) ~ (1|Plant) + Phenotype
+  # Loop to run groupwise analysis for each BP
+  for(i in 1:nrow(methyl_sum)){
+    ZoomFrame_filtered_temp <- ZoomFrame_filtered[i,]
+    # Make long version of input frame for the i'th cytosine row
+    LM <- pivot_and_subset(ZoomFrame_filtered_temp, 'Meth', 'Meth',
+                           colnames_of_interest = c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
+                                                    'Zeroth_pos', 'Individual'))
+    LM$Individual <- gsub("Meth_","", LM$Individual, perl = T)
+    # For rows with at least X(3) methylated reads across all individuals, move forward
+    if(sum(as.numeric(LM$Meth), na.rm=TRUE) >= reads_threshold){
+      # Do the same thing for unmethylated reads
+      LUM <- pivot_and_subset(ZoomFrame_filtered_temp, 'UnMeth', 'UnMeth',
+                              colnames_of_interest = c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
+                                                       'Zeroth_pos', 'Individual'))
+      LM <- cbind(LM,LUM[,ncol(LUM)])
+      # Merge with experimental_design_df to allow for DML testing for that base
+      LM <- LM %>% left_join(experimental_design_df, by=c('Individual'='ID'))
+      # Has to have Y unmethylated reads across all individuials
+      if(sum(as.numeric(LM$UnMeth), na.rm=TRUE) >= reads_threshold){
+        # Run the model and save the output
+        methyl_sum <- run_model(LM, i, methyl_sum, formula, model, control=control)
+        rm(LM, LUM, ZoomFrame_filtered_temp)
+      }
+    }
+  }
+  #  Replace NA values in these columns with 0s
+  methyl_sum[,original_methyl_sum_col_number:ncol(methyl_sum)][is.na(methyl_sum[,original_methyl_sum_col_number:ncol(methyl_sum)])] = 0
+  return(methyl_sum)
 }
 
 #' Individual DMR Analysis
@@ -745,26 +745,26 @@ individual_DMR <- function(methyl_sum, ZoomFrame_filtered, experimental_design_d
 #' @export
 
 find_DMR<- function(methyl_sum, dmr_obj, fixed = c('Group'),
-random = c('Plant'), reads_threshold = 3,
-model, control = " ", analysis_type) {
-# The required columns
-colnames_of_interest <- c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
-'Zeroth_pos', 'Plant')
-if (tolower(analysis_type) == 'group') {
-Output_Frame <- group_DMR(methyl_sum, dmr_obj$ZoomFrame_filtered,
-dmr_obj$experimental_design_df,
-fixed = fixed,random = random, colnames_of_interest,
-reads_threshold = reads_threshold, model = model, control=control)
-} else if (tolower(analysis_type) == 'individual') {
-Output_Frame <- individual_DMR(methyl_sum, dmr_obj$ZoomFrame_filtered,
-dmr_obj$experimental_design_df,
-fixed = fixed, random = random,
-reads_threshold = reads_threshold,
-control = control, model = model)
-} else {
-print(paste(analysis_type, 'analysis type not supported. Please try "individual" or "group"'))
-}
-return(Output_Frame)
+                    random = c('Plant'), reads_threshold = 3,
+                    model, control = " ", analysis_type) {
+  # The required columns
+  colnames_of_interest <- c('Chromosome', 'Gene', 'Position', 'Strand', 'CX',
+                            'Zeroth_pos', 'Plant')
+  if (tolower(analysis_type) == 'group') {
+    Output_Frame <- group_DMR(methyl_sum, dmr_obj$ZoomFrame_filtered,
+                              dmr_obj$experimental_design_df,
+                              fixed = fixed,random = random, colnames_of_interest,
+                              reads_threshold = reads_threshold, model = model, control=control)
+  } else if (tolower(analysis_type) == 'individual') {
+    Output_Frame <- individual_DMR(methyl_sum, dmr_obj$ZoomFrame_filtered,
+                                   dmr_obj$experimental_design_df,
+                                   fixed = fixed, random = random,
+                                   reads_threshold = reads_threshold,
+                                   control = control, model = model)
+  } else {
+    print(paste(analysis_type, 'analysis type not supported. Please try "individual" or "group"'))
+  }
+  return(Output_Frame)
 }
 
 #'  Find the Columns for Changepoint Analysis
@@ -1218,13 +1218,13 @@ sound_score <- function(changepoint_OF = dataframe, Statistic="Z_GroupT_small",
       }
     }
   }
-
- RegionStats$dmr_score[!is.finite(RegionStats$dmr_score)] <- 0
- RegionStats$dmr_score2[!is.finite(RegionStats$dmr_score2)] <- 0
- RegionStats$dmr_score_noZ[!is.finite(RegionStats$dmr_score_noZ)] <- 0
- RegionStats$dmr_score_Percentile[!is.finite(RegionStats$dmr_score_Percentile)] <- 0.5
- RegionStats$dmr_score2_Percentile[!is.finite(RegionStats$dmr_score2_Percentile)] <- 0.5
- RegionStats$dmr_score_noZ_Percentile[!is.finite(RegionStats$dmr_score_noZ_Percentile)] <- 0.5
+  
+  RegionStats$dmr_score[!is.finite(RegionStats$dmr_score)] <- 0
+  RegionStats$dmr_score2[!is.finite(RegionStats$dmr_score2)] <- 0
+  RegionStats$dmr_score_noZ[!is.finite(RegionStats$dmr_score_noZ)] <- 0
+  RegionStats$dmr_score_Percentile[!is.finite(RegionStats$dmr_score_Percentile)] <- 0.5
+  RegionStats$dmr_score2_Percentile[!is.finite(RegionStats$dmr_score2_Percentile)] <- 0.5
+  RegionStats$dmr_score_noZ_Percentile[!is.finite(RegionStats$dmr_score_noZ_Percentile)] <- 0.5
   
   plot(RegionStats$dmr_score2_Percentile, RegionStats$dmr_score2)
   plot <- RegionStats %>%
@@ -1439,12 +1439,12 @@ generate_megaframe <- function(methyl_bed_list=All_methyl_beds, Sample_count, Me
       import_bedfile$name<-gsub("*,0", "", import_bedfile$name)
       import_bedfile<-import_bedfile[,c(1,2,4,5,6,3)]
     }else{
-    tmpsampleData <- read.csv(methyl_bed_list[i], sep="\t", header=bed_header, nrows = 5)
-    classes <- sapply(tmpsampleData, class)
-    #replace some columns to null to delete them
-    classes[c(3, 4, 5, 7, 8, 9)] <- "NULL"
-    #import the bed file
-    import_bedfile <- data.frame(purrr::map(methyl_bed_list[i], ~fread(.x, sep="\t", header=bed_header, colClasses = classes)))
+      tmpsampleData <- read.csv(methyl_bed_list[i], sep="\t", header=bed_header, nrows = 5)
+      classes <- sapply(tmpsampleData, class)
+      #replace some columns to null to delete them
+      classes[c(3, 4, 5, 7, 8, 9)] <- "NULL"
+      #import the bed file
+      import_bedfile <- data.frame(purrr::map(methyl_bed_list[i], ~fread(.x, sep="\t", header=bed_header, colClasses = classes)))
     }
     
     #call get_standard_methyl_bed function to clean up the bed file from each sample
@@ -1679,12 +1679,12 @@ generate_methylframe <-function(methyl_bed_list=All_methyl_beds, Sample_count = 
   Megaframe <- Megaframe[Megaframe$NAs<=(filter_NAs*3),]
   
   if (file_type_output == "text"){
-  write.table(Megaframe, paste(File_prefix, "MegaFrame.csv",sep="_"), row.names=F, sep=",")
-    }
-
-    if (file_type_output == "parquet"){
-  write_parquet(Megaframe, sink=paste(File_prefix, "MegaFrame.parquet",sep="_"))
-    }
+    write.table(Megaframe, paste(File_prefix, "MegaFrame.csv",sep="_"), row.names=F, sep=",")
+  }
+  
+  if (file_type_output == "parquet"){
+    write_parquet(Megaframe, sink=paste(File_prefix, "MegaFrame.parquet",sep="_"))
+  }
   
   message("Megaframe is now available in current directory and in the R-env!")
   
@@ -1775,7 +1775,7 @@ boot_score<-function(sound_score_obj = NA, target_gene= NA, target_start=-1000, 
   # Determine if gene is far enough from end of contig to be used for bootstrapping
   nontarget_ms$far_enough<-FALSE
   for(i in 1:nrow(nontarget_region_lookup)){
-    nontarget_ms$far_enough[nontarget_ms$Gene == nontarget_region_lookup$Gene[i]] <- pmin(abs(nontarget_ms$Zeroth_pos[nontarget_ms$Gene == nontarget_region_lookup$Gene[i]]-nontarget_region_lookup$Start[i]), abs(nontarget_ms$Zeroth_pos[nontarget_ms$Gene == nontarget_region_lookup$Gene[i]]-nontarget_region_lookup$Stop[i])) > 10000
+    nontarget_ms$far_enough[nontarget_ms$Gene == nontarget_region_lookup$Gene[i]] <- pmin(abs(nontarget_ms$Zeroth_pos[nontarget_ms$Gene == nontarget_region_lookup$Gene[i]]-nontarget_region_lookup$Start[i]), abs(nontarget_ms$Zeroth_pos[nontarget_ms$Gene == nontarget_region_lookup$Gene[i]]-nontarget_region_lookup$Stop[i])) > 15000
   }
   #subset to only include these rows
   nontarget_ms_good_distance<-nontarget_ms[nontarget_ms$far_enough==TRUE,]
@@ -1864,7 +1864,7 @@ boot_score<-function(sound_score_obj = NA, target_gene= NA, target_start=-1000, 
 #' @return ms (df) - MS file with new column
 #' @export
 
-                                
+
 Treatment_Compare<-function(Target="T1", N_Treat_Groups=8, new_column_name="on_v_off_T1", ms=methyl_summary){
   ms[new_column_name]<-(ms[Target]-ms$Treated)*(N_Treat_Groups/(N_Treat_Groups-1))
   return(ms)
@@ -1888,3 +1888,18 @@ cpt_compare<-function(cpt_id="LsAGL24_CHH_6", dmr_score_obj=DMR_score_AGL24_Z){
                  color = "red")+ylab("Percent Methylation")+xlab("Treatment Group")+ggtitle(as.character(OT$cp_group[1]))
 }
 
+#' Automatically plot and save all DMRs that passed a given threshold and save plot to Working Directory
+#'
+#' Plotting function to compare methylation at a cpt of interest
+#'
+#' @param sig_dmrs (df) - Name of the cpt of interest
+#' @param dmr_score_file (list) - Name of dmr_obj
+#' @param prefix (str) - Name of dmr_obj
+#' @export
+
+treatment_plots<-function(sig_dmrs=DMR_boot_T7_sig, dmr_score_file=DMR_score_T7, prefix="T7_"){
+for(i in 1:nrow(sig_dmrs)){
+  cpt_compare(cpt_id = as.character(sig_dmrs[i,1]), dmr_score_obj = dmr_score_file)
+  ggsave(paste(prefix,as.character(sig_dmrs[i,1]), ".pdf", sep=""), height = 5, width=7)
+}
+}
