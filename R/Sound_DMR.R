@@ -1394,7 +1394,7 @@ get_standard_methyl_bed <-function(Methyl_bed="Methyl.bed", Sample_ID = "S1", Me
 
 
 
-generate_megaframe <- function(methyl_bed_list=All_methyl_beds, Sample_count, Methyl_call_type="Modkit", File_prefix="", max_read_depth=100, bed_header=TRUE){
+generate_megaframe <- function(methyl_bed_list=All_methyl_beds, Sample_count, Methyl_call_type="Modkit", File_prefix="", max_read_depth=100, bed_header=TRUE, gene_cord_df=gene_coordinate_file){
   
   #QC
   QC <- missing(methyl_bed_list)
@@ -1449,7 +1449,18 @@ generate_megaframe <- function(methyl_bed_list=All_methyl_beds, Sample_count, Me
     
     #call get_standard_methyl_bed function to clean up the bed file from each sample
     methyl_data <- get_standard_methyl_bed(Methyl_bed = import_bedfile, Sample_ID = sample_number[i], Methyl_call_type = Methyl_call_type, max_read_depth = max_read_depth )
-    #getting the count of nrow for sanity checks
+   
+    Final_md <- methyl_data[0,] 
+     if(is.null(gene_cord_df)==FALSE){
+      for(b in 1:nrow(gene_cord_df)){
+        X1_data <- methyl_data[methyl_data$Chromosome %in% gene_cord_df$Chromosome[b], ] #subset based on the gene
+        X1_data <- X1_data %>% dplyr::filter(Position >= (gene_cord_df$Adapt_Low[b]) & Position <=(gene_cord_df$Adapt_High[b]) )
+        Final_md <- rbind(Final_md,X1_data)
+      }
+       methyl_data<-Final_md
+    }
+    
+      #getting the count of nrow for sanity checks
     raw_count <- nrow(methyl_data)
     methyl_data <- unique(methyl_data) #remove duplicates if any
     clean_count <- nrow(methyl_data)
@@ -1672,7 +1683,7 @@ generate_methylframe <-function(methyl_bed_list=All_methyl_beds, Sample_count = 
   }
   
   Megaframe <- generate_megaframe(methyl_bed_list=methyl_bed_list, Sample_count = Sample_count,
-                                  Methyl_call_type=Methyl_call_type, max_read_depth=max_read_depth, File_prefix=File_prefix, bed_header=bed_header)
+                                  Methyl_call_type=Methyl_call_type, max_read_depth=max_read_depth, File_prefix=File_prefix, bed_header=bed_header, gene_cord_df = gene_coordinate_file)
   
   message('\nNOTE: Filtering NAs default is set to ',filter_NAs ,' (Total_samples/2). See documentation for ideas on how to use the filter \n')
   
@@ -1707,6 +1718,7 @@ generate_methylframe <-function(methyl_bed_list=All_methyl_beds, Sample_count = 
   }
   
 }
+
 
 #' Boot_score
 #' @description
