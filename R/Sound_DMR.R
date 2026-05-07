@@ -1185,7 +1185,7 @@ sound_score <- function(changepoint_OF = dataframe, Statistic="Z_GroupT_small",
   MethRegion_Z <- paste("MethRegion_",Statistic, sep = "")
   MethRegion_Length <- paste("MethRegionLength_",Statistic, sep = "")
   # Create vector of columns that include information that the user wants aggregated across each changepoint region.  Includes Statistic, Per_Change, region length, and any other columns of interest.
-  keep_cols <- c(MethRegion_Z, MethRegion_Length,Per_Change, Control,other_columns )
+  keep_cols <- c(MethRegion_Z, MethRegion_Length,Per_Change, Control,other_columns, Statistic)
   # Create new dataframe that includes a new column that has a column for every unique changepoint region
   cp_OF <- within(changepoint_OF, cp_group <- paste(Gene,CX,changepoint_OF[[MethGroup]], sep='_'))
   #Calculate statistics and aggregate for every region
@@ -1193,26 +1193,30 @@ sound_score <- function(changepoint_OF = dataframe, Statistic="Z_GroupT_small",
     group_by(cp_group) %>%
     mutate(Count = n()) %>%
     group_by(cp_group, Gene,CX, Count) %>%
-    summarise_at(vars(one_of(keep_cols)), mean, na.rm=TRUE)
+    summarise_at(vars(one_of(keep_cols)),list(mean = ~mean(., na.rm = TRUE),max = ~max(abs(.), na.rm = TRUE)), na.rm=TRUE)
+  
   Ag_Pos <- cp_OF %>%
     group_by(cp_group) %>%
     summarise(Chr=unique(Chromosome),Start=min(Zeroth_pos), Stop=max(Zeroth_pos), Genome_Low=min(Position), Genome_High=max(Position))
   RegionStats <- cbind(Ag_Pos, RegionStats[,-1])
   #Calculate Sound Statistic
-  RegionStats$dmr_score<-(((RegionStats$Count)^(1/3))*(abs(RegionStats[[MethRegion_Z]])*abs(RegionStats[[Per_Change]]))^(1/2))
-  RegionStats$dmr_score2<-(((RegionStats$Count)^(1/3))*(abs(RegionStats[[MethRegion_Z]])*abs(asin(sqrt(RegionStats[[Per_Change]]/100+RegionStats[[Control]]/100))-asin(sqrt(RegionStats[[Control]]/100)))^(1/2)))
-  RegionStats$dmr_score_noZ<-(((RegionStats$Count)^(1/3))*abs(RegionStats[[Per_Change]])^(1/2))
+  RegionStats$dmr_score<-(((RegionStats$Count)^(1/3))*((abs(RegionStats[[paste(MethRegion_Z,"_mean", sep="")]]))^(1))*(abs(RegionStats[[paste(Per_Change,"_mean", sep="")]])^(1/2)))
+  RegionStats$dmr_score2<-(((RegionStats$Count)^(1/3))*((abs(RegionStats[[paste(MethRegion_Z,"_mean", sep="")]]))^(1))*abs(asin(sqrt(RegionStats[[paste(Per_Change,"_mean", sep="")]]/100+RegionStats[[paste(Control,"_mean", sep="")]]/100))-asin(sqrt(RegionStats[[paste(Control,"_mean", sep="")]]/100)))^(1/2))
+  RegionStats$dmr_score3<-(((RegionStats$Count)^(1/3))*((abs(RegionStats[[paste(MethRegion_Z,"_mean", sep="")]]))^(1/2))*(abs(RegionStats[[paste(Per_Change,"_mean", sep="")]])^(1/2))*(abs(RegionStats[[paste(Statistic,"_max", sep = "")]])^(1/2)))
+  RegionStats$dmr_score_noZ<-(((RegionStats$Count)^(1/3))*abs(RegionStats[[paste(Per_Change,"_mean", sep="")]])^(1/2))
   # if(CF==TRUE){
   #   RegionStats$CustomFunction<<-UserFunction
   #   RegionStats$CustomFunction_Percentile<-ecdf(RegionStats$CustomFunction)(RegionStats$CustomFunction)
   # }
   for(i in 1:nrow(RegionStats)){
-    if (!is.na(RegionStats[[Per_Change]][i])) {
-      if(RegionStats[[Per_Change]][i]<0){
+    if (!is.na(RegionStats[[paste(Per_Change,"_mean", sep="")]][i])) {
+      if(RegionStats[[paste(Per_Change,"_mean", sep="")]][i]<0){
         RegionStats$dmr_score[i]<-RegionStats$dmr_score[i]*-1
         RegionStats$dmr_score_Percentile<-ecdf(RegionStats$dmr_score)(RegionStats$dmr_score)
         RegionStats$dmr_score2[i]<-RegionStats$dmr_score2[i]*-1
         RegionStats$dmr_score2_Percentile<-ecdf(RegionStats$dmr_score2)(RegionStats$dmr_score2)
+        RegionStats$dmr_score3[i]<-RegionStats$dmr_score2[i]*-1
+        RegionStats$dmr_score3_Percentile<-ecdf(RegionStats$dmr_score3)(RegionStats$dmr_score3)        
         RegionStats$dmr_score_noZ[i]<-RegionStats$dmr_score_noZ[i]*-1
         RegionStats$dmr_score_noZ_Percentile<-ecdf(RegionStats$dmr_score_noZ)(RegionStats$dmr_score_noZ)
       }
@@ -1221,15 +1225,17 @@ sound_score <- function(changepoint_OF = dataframe, Statistic="Z_GroupT_small",
   
   RegionStats$dmr_score[!is.finite(RegionStats$dmr_score)] <- 0
   RegionStats$dmr_score2[!is.finite(RegionStats$dmr_score2)] <- 0
+  RegionStats$dmr_score3[!is.finite(RegionStats$dmr_score3)] <- 0  
   RegionStats$dmr_score_noZ[!is.finite(RegionStats$dmr_score_noZ)] <- 0
   RegionStats$dmr_score_Percentile[!is.finite(RegionStats$dmr_score_Percentile)] <- 0.5
+  RegionStats$dmr_score3_Percentile[!is.finite(RegionStats$dmr_score3_Percentile)] <- 0.5
   RegionStats$dmr_score2_Percentile[!is.finite(RegionStats$dmr_score2_Percentile)] <- 0.5
   RegionStats$dmr_score_noZ_Percentile[!is.finite(RegionStats$dmr_score_noZ_Percentile)] <- 0.5
   
-  plot(RegionStats$dmr_score2_Percentile, RegionStats$dmr_score2)
+  plot(RegionStats$dmr_score3_Percentile, RegionStats$dmr_score3)
   plot <- RegionStats %>%
-    ggplot(aes(x = .data[[MethRegion_Z]], y = Count)) +
-    geom_point(aes(color = dmr_score2))
+    ggplot(aes(x = .data[[paste(MethRegion_Z,"_mean", sep="")]], y = Count)) +
+    geom_point(aes(color = dmr_score3))
   print(plot)
   SS_Obj <- list(RegionStats, cp_OF)
   names(SS_Obj) <- c("region_summary", "methyl_summary")
