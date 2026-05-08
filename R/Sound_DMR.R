@@ -1215,7 +1215,7 @@ sound_score <- function(changepoint_OF = dataframe, Statistic="Z_GroupT_small",
         RegionStats$dmr_score_Percentile<-ecdf(RegionStats$dmr_score)(RegionStats$dmr_score)
         RegionStats$dmr_score2[i]<-RegionStats$dmr_score2[i]*-1
         RegionStats$dmr_score2_Percentile<-ecdf(RegionStats$dmr_score2)(RegionStats$dmr_score2)
-        RegionStats$dmr_score3[i]<-RegionStats$dmr_score2[i]*-1
+        RegionStats$dmr_score3[i]<-RegionStats$dmr_score3[i]*-1
         RegionStats$dmr_score3_Percentile<-ecdf(RegionStats$dmr_score3)(RegionStats$dmr_score3)        
         RegionStats$dmr_score_noZ[i]<-RegionStats$dmr_score_noZ[i]*-1
         RegionStats$dmr_score_noZ_Percentile<-ecdf(RegionStats$dmr_score_noZ)(RegionStats$dmr_score_noZ)
