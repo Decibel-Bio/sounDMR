@@ -1922,3 +1922,30 @@ for(i in 1:nrow(sig_dmrs)){
 }
 }
 
+#' Automatically save stats for all DMRs that passed a given threshold and add RD to summary table
+#' Plotting function to compare methylation at a cpt of interest
+#'
+#' @param combined_DMRs (df) - Name of combined_df
+#' @param dmr_obj_file (list) - Name of dmr_obj
+#' @export
+
+DMR_Info <- function(combined_DMRs = combined_df, dmr_obj_file=dmr_obj) {
+  
+  for (i in 1:nrow(combined_DMRs)){
+    combined_DMRs[i,]->DMR_X
+    dmr_obj_file$LongPercent[dmr_obj_file$LongPercent$Gene==DMR_X$Gene & dmr_obj_file$LongPercent$CX==DMR_X$CX & dmr_obj_file$LongPercent$Position >= DMR_X$Genome_Low & dmr_obj_file$LongPercent$Position<=DMR_X$Genome_High,]->dmr_obj_X  
+    dmr_obj_X %>%
+      group_by(Treatment) %>%
+      summarise(across(c(Percent, total_RD), 
+                       list(mean = ~mean(.x, na.rm = TRUE), 
+                            iqr = ~IQR(.x, na.rm = TRUE)))) -> st_X
+    write.csv(st_X, file=paste(DMR_X[1,1],DMR_X[1,2],"summary.csv", sep="_"), row.names = FALSE)
+    
+    combined_DMRs$RD_Target[i]<-st_X[st_X$Treatment==combined_DMRs$source_df[i],4]
+  }
+  return(combined_DMRs)
+}
+
+
+                                
+
