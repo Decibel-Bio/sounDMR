@@ -1,6 +1,6 @@
 Package: sounDMR
 Title: DMR analysis from ONT data
-Version: 2.7.4
+Version: 3.0.1
 Authors@R: c(
     person("Jack", "Colicchio", email = "j.colicchio@sound.ag", role = c("aut", "cre")),
     person("Tom", "Cairns", email = "t.cairns@sound.ag", role = "aut"),
