@@ -4,7 +4,16 @@
 \alias{run_model}
 \title{Run Model}
 \usage{
-run_model(data, i, input_frame, formula, model_type, individual_name_z = "")
+run_model(
+  data,
+  i,
+  input_frame,
+  formula,
+  model_type,
+  individual_name_z = "",
+  control = " ",
+  target_variable = "Treatment"
+)
 }
 \arguments{
 \item{data}{(df) - the information to put in the model, usually this is

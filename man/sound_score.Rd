@@ -11,7 +11,10 @@ sound_score(
   Control = "Control",
   other_columns = c("Estimate_GroupT_small"),
   CF = FALSE,
-  UserFunction = NA
+  UserFunction = NA,
+  score4_count_exponent = 1/2.5,
+  score4_min_mean_z = 0.25,
+  score4_min_mean_dif = 2
 )
 }
 \arguments{
@@ -24,6 +27,17 @@ sound_score(
 \item{other_columns}{(str) - Names of any other columns that one is interested in calculating region averaqges on.}
 
 \item{CF}{(str) - True/False if there is a custom function to be calculated in addition to soundscore}
+
+\item{score4_count_exponent}{(num) - region-size exponent for \code{dmr_score4}.
+\code{dmr_score4} is \code{dmr_score3} with n^score4_count_exponent in place of n^(1/3);
+the default 1/2.5 (= 0.4) gives larger regions a slight boost (relative to
+\code{dmr_score3}: x1 at 1 cytosine, ~x1.17 at 10, ~x1.36 at 100).}
+
+\item{score4_min_mean_z, score4_min_mean_dif}{(num) - signal gate for \code{dmr_score4}:
+a region only gets a non-zero \code{dmr_score4} if its |mean Z| (MethRegion_Z mean) and
+|mean change| (\code{Per_Change} mean, \\% points) are at least these values. Stops long,
+flat regions (mean Z near 0) from scoring on size alone. Set both to 0 to turn off.
+The result is in the \code{dmr_score4_signal} column.}
 
 \item{User_Function}{(str) - The function to use for the custome function}
 }

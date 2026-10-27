@@ -11,8 +11,9 @@ find_DMR(
   random = c("Plant"),
   reads_threshold = 3,
   model,
-  control = "",
-  analysis_type
+  control = " ",
+  analysis_type,
+  target_variable = "Treatment"
 )
 }
 \arguments{

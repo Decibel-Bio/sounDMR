@@ -1172,6 +1172,15 @@ changepoint_analysis <- function(whole_df,
 #' @param other_columns (str) - Names of any other columns that one is interested in calculating region averaqges on.
 #' @param CF (str) - True/False if there is a custom function to be calculated in addition to soundscore
 #' @param User_Function (str) - The function to use for the custome function
+#' @param score4_count_exponent (num) - region-size exponent for `dmr_score4`.
+#' `dmr_score4` is `dmr_score3` with n^score4_count_exponent in place of n^(1/3);
+#' the default 1/2.5 (= 0.4) gives larger regions a slight boost (relative to
+#' `dmr_score3`: x1 at 1 cytosine, ~x1.17 at 10, ~x1.36 at 100).
+#' @param score4_min_mean_z,score4_min_mean_dif (num) - signal gate for `dmr_score4`:
+#' a region only gets a non-zero `dmr_score4` if its |mean Z| (MethRegion_Z mean) and
+#' |mean change| (`Per_Change` mean, \% points) are at least these values. Stops long,
+#' flat regions (mean Z near 0) from scoring on size alone. Set both to 0 to turn off.
+#' The result is in the `dmr_score4_signal` column.
 #' @return Aggregated_Changepoint_Object (list) - File that contains information about methylation patterns within each changepoint region
 #' @export
 
@@ -1179,7 +1188,9 @@ changepoint_analysis <- function(whole_df,
 
 sound_score <- function(changepoint_OF = dataframe, Statistic="Z_GroupT_small",
                         Per_Change = "Treat_V_Control", Control="Control",
-                        other_columns=c("Estimate_GroupT_small"), CF=FALSE, UserFunction=NA) {
+                        other_columns=c("Estimate_GroupT_small"), CF=FALSE, UserFunction=NA,
+                        score4_count_exponent = 1/2.5,
+                        score4_min_mean_z = 0.25, score4_min_mean_dif = 2) {
   # Determine proper column names givwen the test statistic of interest
   MethGroup <- paste("MethGroup_",Statistic, sep = "")
   MethRegion_Z <- paste("MethRegion_",Statistic, sep = "")
@@ -1231,7 +1242,25 @@ sound_score <- function(changepoint_OF = dataframe, Statistic="Z_GroupT_small",
   RegionStats$dmr_score3_Percentile[!is.finite(RegionStats$dmr_score3_Percentile)] <- 0.5
   RegionStats$dmr_score2_Percentile[!is.finite(RegionStats$dmr_score2_Percentile)] <- 0.5
   RegionStats$dmr_score_noZ_Percentile[!is.finite(RegionStats$dmr_score_noZ_Percentile)] <- 0.5
-  
+
+  # dmr_score4: dmr_score3 with a larger region-size exponent, so larger regions
+  # get a slight boost: n^score4_count_exponent * |mean Z|^(1/2) * |mean change|^(1/2) * |max Z|^(1/2)
+  # Negative when the mean change is negative, as for the other scores. Set to 0 for
+  # regions failing the signal gate (|mean Z| / |mean change| below the floors).
+  per_change_mean <- RegionStats[[paste(Per_Change,"_mean", sep="")]]
+  RegionStats$dmr_score4 <- (RegionStats$Count^score4_count_exponent) *
+    (abs(RegionStats[[paste(MethRegion_Z,"_mean", sep="")]])^(1/2)) *
+    (abs(per_change_mean)^(1/2)) *
+    (abs(RegionStats[[paste(Statistic,"_max", sep = "")]])^(1/2)) *
+    ifelse(!is.na(per_change_mean) & per_change_mean < 0, -1, 1)
+  RegionStats$dmr_score4[!is.finite(RegionStats$dmr_score4)] <- 0
+  # Signal gate: no score for regions whose average shift is ~0, however large they are
+  RegionStats$dmr_score4_signal <- !is.na(per_change_mean) &
+    abs(RegionStats[[paste(MethRegion_Z,"_mean", sep="")]]) >= score4_min_mean_z &
+    abs(per_change_mean) >= score4_min_mean_dif
+  RegionStats$dmr_score4[!RegionStats$dmr_score4_signal] <- 0
+  RegionStats$dmr_score4_Percentile <- stats::ecdf(RegionStats$dmr_score4)(RegionStats$dmr_score4)
+
   plot(RegionStats$dmr_score3_Percentile, RegionStats$dmr_score3)
   plot <- RegionStats %>%
     ggplot(aes(x = .data[[paste(MethRegion_Z,"_mean", sep="")]], y = Count)) +
@@ -1736,11 +1765,16 @@ generate_methylframe <-function(methyl_bed_list=All_methyl_beds, Sample_count = 
 #' @param target_end (str) - Stop position relative to gene start that was hit with oligos
 #' @param nboots (str) - Number of bootstrap replicates
 #' @param scoring_col_name (str) - Name of the score column to run bootstrapping on (one of dmr_score or dmr_score2)
+#' @param direction_DMR (str) - "positive" (default), "negative" (score hypomethylation as
+#' positive) or "absolute"
+#' @param exclude_genes (chr) *optional* - genes to leave out of the bootstrap background
+#' in addition to `target_gene`. Use this when the same treatment targeted several genes,
+#' so the other targets' DMRs don't inflate the background.
 #' @return Boot_Obj (list) - File that contains information updated on target region info and bootstrap values
 #' @export
 
 
-boot_score<-function(sound_score_obj = NA, target_gene= NA, target_start=-1000, target_end=0, nboots=1000, scoring_col_name ="dmr_score", direction_DMR="positive"){
+boot_score<-function(sound_score_obj = NA, target_gene= NA, target_start=-1000, target_end=0, nboots=1000, scoring_col_name ="dmr_score", direction_DMR="positive", exclude_genes=NULL){
   #Make necessary objects
   rs<-sound_score_obj$region_summary
   ms<-sound_score_obj$methyl_summary
@@ -1775,15 +1809,17 @@ boot_score<-function(sound_score_obj = NA, target_gene= NA, target_start=-1000, 
   # Write info to Boot_Object
   boot_out$Target[1]<- 1
   boot_out$Gene[1]<-target_gene
-  boot_out$Start_CG[1]<-target_rs$Start[target_rs$adjusted_soundscore==max(target_rs$adjusted_soundscore[target_rs$CX=="CG"]) & target_rs$CX=="CG"]
-  boot_out$Stop_CG[1]<-target_rs$Stop[target_rs$adjusted_soundscore==max(target_rs$adjusted_soundscore[target_rs$CX=="CG"]) & target_rs$CX=="CG"]
-  boot_out$Start_CHG[1]<-target_rs$Start[target_rs$adjusted_soundscore==max(target_rs$adjusted_soundscore[target_rs$CX=="CHG"]) & target_rs$CX=="CHG"]
-  boot_out$Stop_CHG[1]<-target_rs$Stop[target_rs$adjusted_soundscore==max(target_rs$adjusted_soundscore[target_rs$CX=="CHG"]) & target_rs$CX=="CHG"]
-  boot_out$Start_CHH[1]<-target_rs$Start[target_rs$adjusted_soundscore==max(target_rs$adjusted_soundscore[target_rs$CX=="CHH"]) & target_rs$CX=="CHH"]
-  boot_out$Stop_CHH[1]<-target_rs$Stop[target_rs$adjusted_soundscore==max(target_rs$adjusted_soundscore[target_rs$CX=="CHH"]) & target_rs$CX=="CHH"]
+  # [1]: if several regions tie for the max (e.g. all 0), take the first, as the bootstrap rows do
+  boot_out$Start_CG[1]<-target_rs$Start[target_rs$adjusted_soundscore==max(target_rs$adjusted_soundscore[target_rs$CX=="CG"]) & target_rs$CX=="CG"][1]
+  boot_out$Stop_CG[1]<-target_rs$Stop[target_rs$adjusted_soundscore==max(target_rs$adjusted_soundscore[target_rs$CX=="CG"]) & target_rs$CX=="CG"][1]
+  boot_out$Start_CHG[1]<-target_rs$Start[target_rs$adjusted_soundscore==max(target_rs$adjusted_soundscore[target_rs$CX=="CHG"]) & target_rs$CX=="CHG"][1]
+  boot_out$Stop_CHG[1]<-target_rs$Stop[target_rs$adjusted_soundscore==max(target_rs$adjusted_soundscore[target_rs$CX=="CHG"]) & target_rs$CX=="CHG"][1]
+  boot_out$Start_CHH[1]<-target_rs$Start[target_rs$adjusted_soundscore==max(target_rs$adjusted_soundscore[target_rs$CX=="CHH"]) & target_rs$CX=="CHH"][1]
+  boot_out$Stop_CHH[1]<-target_rs$Stop[target_rs$adjusted_soundscore==max(target_rs$adjusted_soundscore[target_rs$CX=="CHH"]) & target_rs$CX=="CHH"][1]
   
   # Make non-target frame
-  nontarget_ms<-ms[ms$Gene!=target_gene,]
+  # Optionally also drop other genes targeted by the same treatment from the background
+  nontarget_ms<-ms[!ms$Gene %in% c(target_gene, exclude_genes),]
   
   # Create lookup table with info for each gene
   nontarget_region_lookup <- nontarget_ms %>%
@@ -1913,6 +1949,8 @@ cpt_compare<-function(cpt_id="LsAGL24_CHH_6", dmr_score_obj=DMR_score_AGL24_Z){
 #' @param sig_dmrs (df) - Name of the cpt of interest
 #' @param dmr_score_file (list) - Name of dmr_obj
 #' @param prefix (str) - Name of dmr_obj
+#' @seealso [run_dmr_downstream()] and [plot_dmr_methylation()], which supersede
+#' this function.
 #' @export
 
 treatment_plots<-function(sig_dmrs=DMR_boot_T7_sig, dmr_score_file=DMR_score_T7, prefix="T7_"){
@@ -1927,6 +1965,8 @@ for(i in 1:nrow(sig_dmrs)){
 #'
 #' @param combined_DMRs (df) - Name of combined_df
 #' @param dmr_obj_file (list) - Name of dmr_obj
+#' @seealso [run_dmr_downstream()], which supersedes this function and returns
+#' plain numeric target / control read-depth columns.
 #' @export
 
 DMR_Info <- function(combined_DMRs = combined_df, dmr_obj_file=dmr_obj) {

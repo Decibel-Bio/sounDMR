@@ -154,3 +154,17 @@ DMR_score <- sound_score(changepoint_OF = methyl_summary,
 DMR_boot_score <- boot_score(sound_score_obj = DMR_score, 
                              target_gene = "AT1G01640", 
                              scoring_col_name="dmr_score2")
+
+#----------------------------------
+# Significant DMRs and summaries
+#----------------------------------
+# Keep regions whose distance-adjusted score passes a threshold
+DMR_boot_score_sig <- get_sig_dmrs(DMR_boot_score, min_score = 6)
+
+# Combine sig tables (one per treatment, or per treatment x target gene) and write
+# summary tables, a BED file and figures. See DMR_workflow.R (and the case 2 / 3
+# variants, README.md) for full treatment / target-gene workflows.
+res <- run_dmr_downstream(list(DMR_boot_score_sig), dmr_obj,
+                          control = "C", treatments = "T",
+                          target_variable = "Group",
+                          out_dir = "downstream", prefix = "Sample")

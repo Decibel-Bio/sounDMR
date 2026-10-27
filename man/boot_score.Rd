@@ -11,7 +11,8 @@ boot_score(
   target_end = 0,
   nboots = 1000,
   scoring_col_name = "dmr_score",
-  direction_DMR = "positive"
+  direction_DMR = "positive",
+  exclude_genes = NULL
 )
 }
 \arguments{
@@ -26,6 +27,13 @@ boot_score(
 \item{nboots}{(str) - Number of bootstrap replicates}
 
 \item{scoring_col_name}{(str) - Name of the score column to run bootstrapping on (one of dmr_score or dmr_score2)}
+
+\item{direction_DMR}{(str) - "positive" (default), "negative" (score hypomethylation as
+positive) or "absolute"}
+
+\item{exclude_genes}{(chr) \emph{optional} - genes to leave out of the bootstrap background
+in addition to \code{target_gene}. Use this when the same treatment targeted several genes,
+so the other targets' DMRs don't inflate the background.}
 }
 \value{
 Boot_Obj (list) - File that contains information updated on target region info and bootstrap values

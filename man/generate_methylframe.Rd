@@ -7,7 +7,7 @@
 generate_methylframe(
   methyl_bed_list = All_methyl_beds,
   Sample_count = 0,
-  Methyl_call_type = "Dorado",
+  Methyl_call_type = "Modkit",
   filter_NAs = 0,
   max_read_depth = 100,
   gene_info = FALSE,
@@ -15,7 +15,9 @@ generate_methylframe(
   Gene_column = "",
   target_info = TRUE,
   gene_list = gene_coordinate_file[[Gene_column]],
-  File_prefix = "Sample"
+  File_prefix = "Sample",
+  file_type_output = "text",
+  bed_header = TRUE
 )
 }
 \arguments{

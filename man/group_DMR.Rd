@@ -13,7 +13,9 @@ group_DMR(
   reads_threshold = 3,
   model = "binomial",
   colnames_of_interest = c("Chromosome", "Gene", "Position", "Strand", "CX",
-    "Zeroth_pos", "Individual")
+    "Zeroth_pos", "Individual"),
+  control = " ",
+  target_variable = "Treatment"
 )
 }
 \arguments{

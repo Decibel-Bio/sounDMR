@@ -4,7 +4,14 @@
 \alias{run_binomial}
 \title{Run Binomial Model}
 \usage{
-run_binomial(LM, i = int, formula, optimizer_func = "optimizer")
+run_binomial(
+  LM,
+  i = int,
+  formula,
+  optimizer_func = "optimizer",
+  control = " ",
+  target_variable = "Treatment"
+)
 }
 \arguments{
 \item{LM}{(df) - the information to put in the model, usually this is

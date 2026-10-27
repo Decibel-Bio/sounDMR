@@ -7,9 +7,11 @@
 generate_megaframe(
   methyl_bed_list = All_methyl_beds,
   Sample_count,
-  Methyl_call_type = "Dorado",
+  Methyl_call_type = "Modkit",
   File_prefix = "",
-  max_read_depth = 100
+  max_read_depth = 100,
+  bed_header = TRUE,
+  gene_cord_df = gene_coordinate_file
 )
 }
 \arguments{
@@ -18,7 +20,7 @@ Hint : The input will be the "methyl_bed_list" vector that you create in the pre
 
 \item{Sample_count}{(int) - This is required to assign proper alphabet codes. If you need to include the samples from a previous round, then enter the total number of samples from the previous round here. Default is 0. By default alphabetizing starts with 'A'.}
 
-\item{Methyl_call_type}{(str) - A string that includes information about the type of run. Currently this package works on Megalodon , DSP (DeepSignal Plant) and Bonito.}
+\item{Methyl_call_type}{(str) - A string that includes information about the type of run. Currently this package works on Dorado, Modkit , Megalodon , DSP (DeepSignal Plant) and Bonito.}
 
 \item{File_prefix}{(Flexible str) - This is to add a prefix to all the files that get exported and saved to the working directory while running the function.}
 }
